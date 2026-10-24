@@ -546,7 +546,8 @@ export function ExamWorkspace({
               }
               return g;
             });
-            const newTotal = newGroups[0]?.questions.reduce((sum, q) => sum + (q.marks || 0), 0) || prev.total_marks;
+            const activeGroup = newGroups[activeGroupIndex] || newGroups[0];
+            const newTotal = activeGroup?.questions.reduce((sum, q) => sum + (q.marks || 0), 0) || prev.total_marks;
             return { ...prev, groups: newGroups, total_marks: newTotal };
           });
         }
@@ -577,23 +578,27 @@ export function ExamWorkspace({
 
       if (res.ok) {
         const data = await res.json();
-        // Fetch fresh exam state from server to ensure perfect synchronization across all groups and variants
+        // Fetch fresh exam state from server to ensure perfect synchronization
         const examRes = await authFetch(`/api/exams/${activeExam.id}`);
         if (examRes.ok) {
           const freshExam = await examRes.json();
           setActiveExam(freshExam);
         } else {
-          // Fallback optimistic update using response metrics
+          // Fallback optimistic update targeting the deleted question's group only
           setActiveExam((prev) => {
             if (!prev) return prev;
+            const targetGroupId = deletingQuestion.group_id || prev.groups[activeGroupIndex]?.id;
             const updatedGroups = prev.groups.map((g) => {
-              const filtered = g.questions.filter((q) => q.id !== deletingQuestion.id && q.question_text !== deletingQuestion.question_text);
-              const resequenced = filtered.map((q, idx) => ({ ...q, question_order: idx + 1 }));
-              return {
-                ...g,
-                questions: resequenced,
-                questions_count: resequenced.length,
-              };
+              if (g.id === targetGroupId) {
+                const filtered = g.questions.filter((q) => q.id !== deletingQuestion.id);
+                const resequenced = filtered.map((q, idx) => ({ ...q, question_order: idx + 1 }));
+                return {
+                  ...g,
+                  questions: resequenced,
+                  questions_count: resequenced.length,
+                };
+              }
+              return g;
             });
             const newTotalCount = updatedGroups.reduce((acc, g) => acc + g.questions.length, 0);
             return {
@@ -1008,9 +1013,9 @@ export function ExamWorkspace({
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-600">
-                  Generates isomorphic parallel exam variants ({getGroupLabelText(groupsCount)}) with
-                  permuted MCQ options and reordered questions to prevent cheating while preserving
-                  exact difficulty and grading rubrics.
+                  Generates distinct, source-grounded parallel exam variants ({getGroupLabelText(groupsCount)}) from
+                  unique curriculum evidence across the document, ensuring genuine anti-cheating separation while
+                  maintaining consistent question types, difficulty, and grading rubrics.
                 </p>
                 <div className="flex items-center gap-3">
                   <input
@@ -1291,7 +1296,7 @@ export function ExamWorkspace({
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs text-stone-500 px-1">
                 <span>
-                  Viewing <strong className="text-stone-800">{currentGroup.group_name}</strong> (Permuted anti-cheating variant with synchronized answer keys)
+                  Viewing <strong className="text-stone-800">{currentGroup.group_name}</strong> (Distinct grounded exam variant with synchronized answer key)
                 </span>
                 <span>Total Marks: {currentGroup.questions.reduce((a, b) => a + b.marks, 0)} pts</span>
               </div>
@@ -1952,7 +1957,7 @@ export function ExamWorkspace({
                   Delete Question {deletingQuestion.question_order}?
                 </h3>
                 <p className="text-xs text-stone-500 leading-relaxed">
-                  Are you sure you want to delete this question? This action will synchronize deletion of this question and its isomorphic variants across all {activeExam.groups.length} examination groups, automatically update sequential numbering, recalculate total marks, and maintain consistent answer keys.
+                  Are you sure you want to delete this question? This action will remove the question from {currentGroup?.group_name || 'this group'}, automatically update sequential numbering in this group, and recalculate marks and answer keys. Sibling groups remain intact.
                 </p>
               </div>
             </div>

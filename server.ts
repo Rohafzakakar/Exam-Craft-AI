@@ -4752,16 +4752,23 @@ async function startServer() {
       explanation: targetQuestion.explanation,
     });
 
-    // Recalculate total marks across exam
-    if (exam.groups.length > 0) {
-      exam.total_marks = exam.groups[0].questions.reduce((sum, q) => sum + q.marks, 0);
-      db.updateExamMetadata(exam.id, { total_marks: exam.total_marks });
-    }
+    // Recalculate total marks across exam based on all groups
+    const targetGroup = exam.groups[targetGroupIndex];
+    const targetGroupTotalMarks = targetGroup
+      ? targetGroup.questions.reduce((sum, q) => sum + (q.marks || 0), 0)
+      : 0;
+
+    // If all groups share the exact same total, maintain that total; otherwise reflect the updated group
+    const groupTotals = exam.groups.map((g) => g.questions.reduce((sum, q) => sum + (q.marks || 0), 0));
+    const allGroupsEqual = groupTotals.every((t) => Math.abs(t - groupTotals[0]) < 0.001);
+    exam.total_marks = allGroupsEqual ? groupTotals[0] : targetGroupTotalMarks;
+
+    db.updateExamMetadata(exam.id, { total_marks: exam.total_marks });
 
     return res.json(targetQuestion);
   });
 
-  // Delete Question (Synchronized across all groups)
+  // Delete Question (Deletes only the intended question from its target group)
   app.delete('/api/exams/:id/questions/:question_id', (req: Request, res: Response) => {
     const exam = db.getExamById(req.params.id);
     if (!exam) {
@@ -4778,70 +4785,53 @@ async function startServer() {
       }
     }
 
-    // Check minimum questions constraint: an exam must retain at least 1 question per group
-    const firstGroup = exam.groups[0];
-    if (!firstGroup || firstGroup.questions.length <= 1) {
-      return res.status(400).json({
-        detail: 'Cannot delete question: Examination must retain at least one question.',
-      });
-    }
-
     let targetQ: QuestionRecord | null = null;
     let targetGroupIndex = -1;
-    let targetQuestionIndex = -1;
 
     for (let gIdx = 0; gIdx < exam.groups.length; gIdx++) {
       const qIdx = exam.groups[gIdx].questions.findIndex((q) => q.id === req.params.question_id);
       if (qIdx !== -1) {
         targetQ = exam.groups[gIdx].questions[qIdx];
         targetGroupIndex = gIdx;
-        targetQuestionIndex = qIdx;
         break;
       }
     }
 
-    if (!targetQ) {
+    if (!targetQ || targetGroupIndex === -1) {
       return res.status(404).json({ detail: 'Question not found' });
     }
 
-    const targetText = targetQ.question_text;
-    const targetEvidence = targetQ.source_evidence;
-    let totalDeleted = 0;
-    const deletedQuestionIds: string[] = [];
+    const targetGroup = exam.groups[targetGroupIndex];
 
-    // Delete matching isomorphic question across all groups
-    for (const group of exam.groups) {
-      let matchIdx = group.questions.findIndex(
-        (q) => q.id === targetQ?.id || q.question_text === targetText
-      );
-      if (matchIdx === -1 && targetEvidence) {
-        matchIdx = group.questions.findIndex((q) => q.source_evidence === targetEvidence);
-      }
-      if (matchIdx === -1 && targetQuestionIndex < group.questions.length) {
-        matchIdx = targetQuestionIndex;
-      }
-
-      if (matchIdx !== -1) {
-        const removed = group.questions.splice(matchIdx, 1);
-        if (removed[0]) {
-          deletedQuestionIds.push(removed[0].id);
-          db.deleteQuestion(removed[0].id);
-        }
-        totalDeleted++;
-      }
-
-      // Re-sequence question_order
-      group.questions.forEach((q, idx) => {
-        q.question_order = idx + 1;
-        db.updateQuestionOrder(q.id, idx + 1);
+    // Check minimum questions constraint: the specific target group must retain at least 1 question
+    if (!targetGroup || targetGroup.questions.length <= 1) {
+      return res.status(400).json({
+        detail: `Cannot delete question: ${targetGroup?.group_name || 'Group'} must retain at least one question.`,
       });
-      group.questions_count = group.questions.length;
-      db.updateGroupQuestionsCount(group.id, group.questions.length);
     }
 
+    // Delete ONLY the target question from its group. Never delete unrelated sibling group questions!
+    const removedIdx = targetGroup.questions.findIndex((q) => q.id === targetQ!.id);
+    if (removedIdx !== -1) {
+      targetGroup.questions.splice(removedIdx, 1);
+      db.deleteQuestion(targetQ.id);
+    }
+
+    // Re-sequence question_order within the affected targetGroup ONLY
+    targetGroup.questions.forEach((q, idx) => {
+      q.question_order = idx + 1;
+      db.updateQuestionOrder(q.id, idx + 1);
+    });
+    targetGroup.questions_count = targetGroup.questions.length;
+    db.updateGroupQuestionsCount(targetGroup.id, targetGroup.questions.length);
+
     exam.questions_count = exam.groups.reduce((acc, g) => acc + g.questions.length, 0);
-    const newTotalMarks = exam.groups[0]?.questions.reduce((sum, q) => sum + q.marks, 0) || 0;
-    exam.total_marks = newTotalMarks;
+
+    const targetGroupMarks = targetGroup.questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+    const groupTotals = exam.groups.map((g) => g.questions.reduce((sum, q) => sum + (q.marks || 0), 0));
+    const allGroupsEqual = groupTotals.every((t) => Math.abs(t - groupTotals[0]) < 0.001);
+    exam.total_marks = allGroupsEqual ? groupTotals[0] : targetGroupMarks;
+
     db.updateExamMetadata(exam.id, {
       total_marks: exam.total_marks,
       questions_count: exam.questions_count,
@@ -4849,11 +4839,12 @@ async function startServer() {
 
     return res.json({
       deleted_question_id: req.params.question_id,
-      synchronized_groups_count: exam.groups.length,
-      deleted_count: totalDeleted,
-      remaining_questions_per_group: exam.groups[0]?.questions.length || 0,
-      new_total_marks: newTotalMarks,
-      message: `Successfully deleted question across ${exam.groups.length} groups. Total marks updated to ${newTotalMarks}.`,
+      deleted_from_group_id: targetGroup.id,
+      deleted_from_group_name: targetGroup.group_name,
+      remaining_questions_in_group: targetGroup.questions.length,
+      group_total_marks: targetGroupMarks,
+      new_total_marks: exam.total_marks,
+      message: `Successfully deleted question from ${targetGroup.group_name}. Remaining questions in ${targetGroup.group_name}: ${targetGroup.questions.length}.`,
     });
   });
 
@@ -4999,13 +4990,17 @@ async function startServer() {
         .filter((s) => s.length > 20 && !s.endsWith('?') && !/^Why\b/i.test(s));
     };
 
-    // Track sentences currently in use in this group (other questions) to guarantee no duplication
+    // Track sentences and questions in use across ALL groups of this exam to guarantee no cross-group duplication
     const usedSentences = new Set<string>();
-    for (const q of foundGroup.questions) {
-      if (q.id === targetQ.id) continue;
-      if (q.source_evidence) usedSentences.add(normalizeQuestionText(q.source_evidence));
-      if (q.question_text) usedSentences.add(normalizeQuestionText(q.question_text));
-      if (q.correct_answer) usedSentences.add(normalizeQuestionText(q.correct_answer));
+    const allOtherExamQuestions: QuestionRecord[] = [];
+    for (const group of exam.groups) {
+      for (const q of group.questions) {
+        if (q.id === targetQ.id) continue;
+        allOtherExamQuestions.push(q);
+        if (q.source_evidence) usedSentences.add(normalizeQuestionText(q.source_evidence));
+        if (q.question_text) usedSentences.add(normalizeQuestionText(q.question_text));
+        if (q.correct_answer) usedSentences.add(normalizeQuestionText(q.correct_answer));
+      }
     }
 
     interface CandidateFact {
@@ -5046,25 +5041,51 @@ async function startServer() {
     // Sort matching instruction candidates first
     candidates.sort((a, b) => (b.matchesInstruction ? 1 : 0) - (a.matchesInstruction ? 1 : 0));
 
-    // Select candidate fact with different variant index to guarantee freshness
+    // Select candidate fact that produces a question distinct from ALL groups
     const variantSeed = Math.floor(Date.now() / 1000) % 7 + 1;
-    const chosenFact = candidates.length > 0
-      ? candidates[variantSeed % candidates.length]
-      : {
-          chunk: targetChunks[0] || doc.chunks[0],
-          sentence: targetQ.source_evidence || (targetChunks[0]?.content || doc.chunks[0].content).slice(0, 150),
-          matchesInstruction: false,
-        };
+    let selectedFact: CandidateFact | { chunk: DocumentChunkRecord; sentence: string; matchesInstruction: boolean } =
+      candidates[variantSeed % (candidates.length || 1)] || {
+        chunk: targetChunks[0] || doc.chunks[0],
+        sentence: targetQ.source_evidence || (targetChunks[0]?.content || doc.chunks[0].content).slice(0, 150),
+        matchesInstruction: false,
+      };
+    let synthesized: any = null;
 
-    const synthesized = synthesizeQuestionFromFact(
-      doc,
-      chosenFact.chunk,
-      chosenFact.sentence,
-      targetQ.question_type,
-      Boolean(exam.bloom_enabled),
-      targetQ.question_order,
-      variantSeed
-    );
+    if (candidates.length > 0) {
+      for (let attempt = 0; attempt < Math.min(candidates.length, 12); attempt++) {
+        const cand = candidates[(variantSeed + attempt) % candidates.length];
+        const candidateQ = synthesizeQuestionFromFact(
+          doc,
+          cand.chunk,
+          cand.sentence,
+          targetQ.question_type,
+          Boolean(exam.bloom_enabled),
+          targetQ.question_order,
+          variantSeed + attempt
+        );
+        if (candidateQ) {
+          const isDup = allOtherExamQuestions.some((eq) => areQuestionsDuplicate(candidateQ, eq));
+          if (!isDup) {
+            synthesized = candidateQ;
+            selectedFact = cand;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback if no candidate strictly passed the duplicate check (e.g. sparse doc)
+    if (!synthesized) {
+      synthesized = synthesizeQuestionFromFact(
+        doc,
+        selectedFact.chunk,
+        selectedFact.sentence,
+        targetQ.question_type,
+        Boolean(exam.bloom_enabled),
+        targetQ.question_order,
+        variantSeed
+      );
+    }
 
     if (!synthesized) {
       return res.status(422).json({
@@ -5083,18 +5104,18 @@ async function startServer() {
 
     if (targetQ.question_type === 'mcq') {
       let rawOptions = (synthesized.options || [])
-        .map((opt) =>
+        .map((opt: string) =>
           String(opt)
             .replace(/^(\([A-Za-z0-9\u0621-\u064A\u067E\u0686\u0698\u06AF\u06CC\u06A9]+\)|[A-Za-z0-9\u0621-\u064A\u067E\u0686\u0698\u06AF\u06CC\u06A9]+[\:\.\-\)])\s*/, '')
             .trim()
         )
-        .filter((opt) => opt.length > 0 && !/^New Option\b/i.test(opt) && !/^گزینه جدید/i.test(opt));
+        .filter((opt: string) => opt.length > 0 && !/^New Option\b/i.test(opt) && !/^گزینه جدید/i.test(opt));
 
       rawOptions = Array.from(new Set(rawOptions));
 
       // Ensure correct answer is part of options
       const cleanAnsNormalized = cleanAnswer.trim();
-      if (!rawOptions.some((o) => o === cleanAnsNormalized)) {
+      if (!rawOptions.some((o: string) => o === cleanAnsNormalized)) {
         if (rawOptions.length >= 4) {
           rawOptions[0] = cleanAnsNormalized;
         } else {
@@ -5104,7 +5125,7 @@ async function startServer() {
 
       // If fewer than 4, extract genuine topic distractors from document
       if (rawOptions.length < 4) {
-        const distractors = extractTopicRelevantDistractors(doc, chosenFact.sentence);
+        const distractors = extractTopicRelevantDistractors(doc, selectedFact.sentence);
         for (const dist of distractors) {
           const cleanDist = dist.trim();
           if (cleanDist && !rawOptions.includes(cleanDist) && !/^New Option/i.test(cleanDist)) {
@@ -5136,7 +5157,7 @@ async function startServer() {
       }
 
       cleanOptions = rawOptions.slice(0, 4);
-      cleanAnswer = cleanOptions.find((o) => o === cleanAnsNormalized) || cleanOptions[0];
+      cleanAnswer = (cleanOptions && cleanOptions.find((o: string) => o === cleanAnsNormalized)) || (cleanOptions ? cleanOptions[0] : cleanAnsNormalized);
     } else {
       cleanOptions = null;
     }
@@ -5146,11 +5167,11 @@ async function startServer() {
     targetQ.options = cleanOptions;
     targetQ.correct_answer = cleanAnswer;
     targetQ.explanation = synthesized.explanation;
-    targetQ.source_page = chosenFact.chunk.page_number;
-    targetQ.source_chapter = chosenFact.chunk.chapter || targetQ.source_chapter;
-    targetQ.source_section = chosenFact.chunk.section || targetQ.source_section;
-    targetQ.source_chunk_id = chosenFact.chunk.id;
-    targetQ.source_evidence = chosenFact.sentence;
+    targetQ.source_page = selectedFact.chunk.page_number;
+    targetQ.source_chapter = selectedFact.chunk.chapter || targetQ.source_chapter;
+    targetQ.source_section = selectedFact.chunk.section || targetQ.source_section;
+    targetQ.source_chunk_id = selectedFact.chunk.id;
+    targetQ.source_evidence = selectedFact.sentence;
     targetQ.bloom_level = synthesized.bloom_level || targetQ.bloom_level;
     targetQ.difficulty = synthesized.difficulty || targetQ.difficulty;
     targetQ.updated_at = new Date().toISOString();
