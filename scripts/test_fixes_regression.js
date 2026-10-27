@@ -70,7 +70,7 @@ async function runRegressionTests() {
       },
       body: JSON.stringify({
         question_text: 'سوال ۱: ➢ وظیفه اصلی میتوکندری در سلول چیست؟ • “انرژی‌سازی” — توضیح دهید.',
-        correct_answer: '➢ تولید مولکول‌های ATP از طریق فسفوریلاسیون اکسیداتیو',
+        correct_answer: 'الف) ➢ تولید ATP و تنفس هوازی',
         explanation: '➢ میتوکندری نیروگاه سلول است (Mitochondria produce cellular ATP).',
         options: [
           'الف) ➢ تولید ATP و تنفس هوازی',

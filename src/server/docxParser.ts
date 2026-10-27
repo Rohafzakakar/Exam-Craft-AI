@@ -21,13 +21,46 @@ export interface ParsedDocxResult {
   text: string;
 }
 
-function decodeXmlEntities(str: string): string {
+export function decodeXmlEntities(str: string): string {
+  if (!str) return '';
   return str
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/gi, (match, hex) => {
+      try {
+        const codePoint = parseInt(hex, 16);
+        if (
+          Number.isInteger(codePoint) &&
+          codePoint >= 0 &&
+          codePoint <= 0x10FFFF &&
+          !(codePoint >= 0xD800 && codePoint <= 0xDFFF)
+        ) {
+          return String.fromCodePoint(codePoint);
+        }
+        return match;
+      } catch {
+        return match;
+      }
+    })
+    .replace(/&#([0-9]+);/g, (match, dec) => {
+      try {
+        const codePoint = parseInt(dec, 10);
+        if (
+          Number.isInteger(codePoint) &&
+          codePoint >= 0 &&
+          codePoint <= 0x10FFFF &&
+          !(codePoint >= 0xD800 && codePoint <= 0xDFFF)
+        ) {
+          return String.fromCodePoint(codePoint);
+        }
+        return match;
+      } catch {
+        return match;
+      }
+    });
 }
 
 export function detectLanguageAndDirection(text: string): { language: string; isRtl: boolean } {
@@ -182,7 +215,7 @@ export async function parseDocxBuffer(fileBuffer: Buffer, filename: string): Pro
 
   // Fallback if XML parsing did not yield sufficient pages or text
   if (pages.length === 0 || fullText.trim().length < 50) {
-    const rawFallback = mammothText.trim() || fullText.trim();
+    const rawFallback = decodeXmlEntities(mammothText.trim() || fullText.trim());
     if (!rawFallback || rawFallback.length < 30) {
       throw new Error(
         'The uploaded DOCX document contains no readable educational text. Please verify the file is not empty or password-protected.'

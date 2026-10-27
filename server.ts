@@ -49,7 +49,14 @@ import {
   computeJaccardSimilarity,
 } from './src/server/duplicateDetector.js';
 import type { QuestionCandidate } from './src/server/duplicateDetector.js';
-import { parseDocxBuffer, detectLanguageAndDirection } from './src/server/docxParser.js';
+import { parseDocxBuffer, detectLanguageAndDirection, decodeXmlEntities } from './src/server/docxParser.js';
+import {
+  cleanLeadingPersianDiscourseMarkers,
+  extractPersianEducationalTopic,
+  removeRagBoilerplateFromQuestionStem,
+  formatConcisePersianOption,
+  generateConceptSpecificPersianDistractors,
+} from './src/server/textQuality.js';
 export type { QuestionCandidate };
 export {
   areQuestionsDuplicate,
@@ -57,6 +64,12 @@ export {
   normalizeQuestionOptions,
   getQuestionTokens,
   computeJaccardSimilarity,
+  decodeXmlEntities,
+  cleanLeadingPersianDiscourseMarkers,
+  extractPersianEducationalTopic,
+  removeRagBoilerplateFromQuestionStem,
+  formatConcisePersianOption,
+  generateConceptSpecificPersianDistractors,
 };
 
 dotenv.config();
@@ -113,7 +126,7 @@ function decodeUtf8Filename(raw: string): string {
 export function cleanDocumentContentForRag(rawText: string): { cleanedText: string; isOnlyMetadata: boolean; substantiveWordsCount: number } {
   if (!rawText) return { cleanedText: '', isOnlyMetadata: true, substantiveWordsCount: 0 };
 
-  let text = String(rawText)
+  let text = decodeXmlEntities(String(rawText))
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\t/g, ' ')
@@ -223,7 +236,7 @@ export function cleanDocumentContentForRag(rawText: string): { cleanedText: stri
 export function extractCleanSubstantiveSentences(rawText: string, isPersian: boolean = false): string[] {
   if (!rawText) return [];
   // Normalize hyphenated words across newlines and whitespace
-  let text = String(rawText)
+  let text = decodeXmlEntities(String(rawText))
     .replace(/(\w+)-\s*\n\s*(\w+)/g, '$1$2')
     .replace(/\r\n|\r/g, '\n');
 
@@ -761,13 +774,13 @@ function extractTopicRelevantDistractors(
         const sim = computeJaccardSimilarity(currentTokens, tokens);
         if (sim < 0.45) {
           // Format cleanly without chopping words or trailing punctuation
-          let formatted = s;
-          if (formatted.length > 130) {
+          let formatted = isPersian ? cleanLeadingPersianDiscourseMarkers(s) : s;
+          if (!isPersian && formatted.length > 130) {
             const cutIdx = formatted.lastIndexOf(' ', 125);
             formatted = cutIdx > 60 ? formatted.slice(0, cutIdx).trim() : formatted.slice(0, 125).trim();
           }
           formatted = formatted.replace(/[,;:—\-\s]+$/, '');
-          if (!/[.!?]$/.test(formatted)) {
+          if (!/[.!?؛۔]$/.test(formatted)) {
             formatted += '.';
           }
           const normFormatted = normalizeQuestionText(formatted);
@@ -786,15 +799,16 @@ function extractTopicRelevantDistractors(
       const normalized = c.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       const clauses = normalized.split(/[;:]|\s*,\s*(?=while|whereas|although|because|instead|rather)\b/i).map((cl) => cl.trim());
       for (const cl of clauses) {
-        if (cl.length >= 35 && cl.length <= 130 && !cl.endsWith('?')) {
+        if (cl.length >= 35 && (!isPersian || cl.length <= 160) && !cl.endsWith('?')) {
           const normCl = normalizeQuestionText(cl);
           if (normCl !== normCurrent && !seenOptions.has(normCl)) {
             const tokens = getQuestionTokens(cl);
             const sim = computeJaccardSimilarity(currentTokens, tokens);
             if (sim < 0.45) {
               seenOptions.add(normCl);
-              let formatted = cl.replace(/[,;:—\-\s]+$/, '');
-              if (!/[.!?]$/.test(formatted)) formatted += '.';
+              let formatted = isPersian ? cleanLeadingPersianDiscourseMarkers(cl) : cl;
+              formatted = formatted.replace(/[,;:—\-\s]+$/, '');
+              if (!/[.!?؛۔]$/.test(formatted)) formatted += '.';
               candidateDistractors.push(formatted);
             }
           }
@@ -815,7 +829,8 @@ function synthesizeQuestionFromFact(
   targetType: string,
   bloomEnabled: boolean,
   seqIndex: number,
-  variantIndex: number = 0
+  variantIndex: number = 0,
+  usedOptions: Set<string> = new Set()
 ): {
   concept_key?: string;
   question_type: string;
@@ -930,7 +945,7 @@ function synthesizeQuestionFromFact(
           marks: 5.0,
           difficulty: 'hard',
           bloom_level: 'evaluate',
-          question_text: 'با استناد به تحلیل ارائه‌شده در متن، سه حرکت بنیادین برنامه عمل پکن را در انطباق با چالش‌های حقوقی معاصر زنان در افغانستان به تفصیل ارزیابی نمایید.',
+          question_text: 'سه حرکت بنیادین برنامه عمل پکن را در انطباق با چالش‌های حقوقی معاصر زنان به تفصیل ارزیابی و تحلیل نمایید.',
           options: null,
           correct_answer: 'پاسخ تحلیلی جامع بر مبنای سند پکن: صیانت از حقوق بشر زنان، تضمین برابری در عمل و دستیابی به سواد حقوقی، همراه با بررسی موانع ساختاری.',
           explanation: `معیار نمره‌دهی: انسجام دیدگاه (۱ نمره)، استناد به سند پکن (۲ نمره)، تحلیل حقوقی-عملی عمیق (۲ نمره). (صفحه ${chunk.page_number})`,
@@ -945,7 +960,7 @@ function synthesizeQuestionFromFact(
     } else if (cleanSent.includes('طالبان') || cleanSent.includes('ادارات') || cleanSent.includes('محرم')) {
       if (targetType === 'mcq') {
         const mcqStems = [
-          'بر اساس تحلیل متن، پیامد حقوقی و عملی ممنوعیت حضور زنان در ادارات و الزام محرم شرعی چیست؟',
+          'پیامد حقوقی و عملی ممنوعیت حضور زنان در ادارات و الزام محرم شرعی چیست؟',
           'کدام مورد بیانگر اثر مستقیم سلب حق کار زنان و اعمال محدودیت محرم در عرصه عمومی است؟',
         ];
         const stem = mcqStems[variantIndex % mcqStems.length];
@@ -977,7 +992,7 @@ function synthesizeQuestionFromFact(
           marks: 1.0,
           difficulty: 'easy',
           bloom_level: 'remember',
-          question_text: 'صحیح یا غلط: طبق متن، ممانعت از اشتغال زنان در ادارات و الزام محرم، نقض صریح آزادی‌های فردی و استقلال اقتصادی بانوان محسوب می‌شود.',
+          question_text: 'صحیح یا غلط: ممانعت از اشتغال زنان در ادارات و الزام محرم، نقض صریح آزادی‌های فردی و استقلال اقتصادی بانوان محسوب می‌شود.',
           options: ['صحیح', 'غلط'],
           correct_answer: 'صحیح',
           explanation: `استناد مستقیم: "${cleanSent.slice(0, 130)}" (صفحه ${chunk.page_number}).`,
@@ -995,7 +1010,7 @@ function synthesizeQuestionFromFact(
           marks: 3.0,
           difficulty: 'medium',
           bloom_level: 'analyze',
-          question_text: 'در ۲ الی ۳ جمله، ابعاد حقوقی و پیامدهای محدودیت حق کار و الزامات محرم شرعی را بر اساس متن شرح دهید.',
+          question_text: 'در ۲ الی ۳ جمله، ابعاد حقوقی و پیامدهای محدودیت حق کار و الزامات محرم شرعی را شرح دهید.',
           options: null,
           correct_answer: 'بر اساس منبع، این محدودیت‌ها موجب بلاتکلیفی کارمندان زن، سلب استقلال اقتصادی و تضییع آزادی‌های مدنی تصریح‌شده در اسناد حقوقی می‌گردد.',
           explanation: `معیار نمره‌دهی: ۱. تحلیل پیامد شغلی (۱ نمره)، ۲. استناد به حقوق مدنی (۱ نمره)، ۳. وضوح تحلیل (۱ نمره). (صفحه ${chunk.page_number})`,
@@ -1014,7 +1029,7 @@ function synthesizeQuestionFromFact(
           marks: 2.0,
           difficulty: 'medium',
           bloom_level: bloom,
-          question_text: 'طبق مباحث مطرح‌شده در متن، حقوق و جایگاه اجتماعی-سیاسی زنان بیانگر کدام شاخص در جوامع معاصر است؟',
+          question_text: 'حقوق و جایگاه اجتماعی-سیاسی زنان بیانگر کدام شاخص در جوامع معاصر است؟',
           options: [
             'از بنیادی‌ترین شاخص‌های سنجش مردم‌سالاری و توسعه‌یافتگی در جوامع معاصر',
             'صرفاً یک موضوع ثانویه و فاقد تأثیر در ثبات سیاسی و اجتماعی',
@@ -1052,21 +1067,46 @@ function synthesizeQuestionFromFact(
     }
 
     // General Persian sentence extraction
-    const keyPhrase = cleanSent.split(/[،؛,.]/)[0].trim().slice(0, 90);
+    const strippedSent = cleanLeadingPersianDiscourseMarkers(cleanSent).trim();
+    if (strippedSent.length < 18) {
+      return null;
+    }
+
     if (targetType === 'mcq') {
+      const subjectTopic = extractPersianEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+
       const stems = [
-        `بر اساس گزاره مطرح‌شده در متن منبع («${keyPhrase}...»)، کدام گزینه مفهوم اساسی را بیان می‌دارد؟`,
-        `با استناد به تحلیل مندرج در صفحه ${chunk.page_number} پیرامون «${keyPhrase}...»، کدام نتیجه‌گیری مستند و صحیح است؟`,
-        `کدام مورد بیانگر تحلیل دقیق گزاره آموزشی («${keyPhrase}...») در این بخش می‌باشد؟`,
-        `طبق آموزه‌های مندرج در صفحه ${chunk.page_number}، اهمیت موضوع «${keyPhrase}» در چیست؟`,
+        `در رابطه با «${subjectTopic}»، کدام گزینه بیانگر مفهوم و نتیجه‌گیری صحیح است؟`,
+        `کدام مورد، اصل یا کارکرد اساسی «${subjectTopic}» را به درستی بیان می‌کند؟`,
+        `در خصوص «${subjectTopic}»، کدام گزاره مفهوم محوری را به درستی تبیین می‌کند؟`,
+        `کدام گزینه، تحلیل دقیق و معتبری در رابطه با «${subjectTopic}» ارائه می‌دهد؟`,
       ];
-      const selectedStem = stems[variantIndex % stems.length];
-      const topicDistractors = extractTopicRelevantDistractors(doc, cleanSent);
-      const cleanAnswer = cleanSent.length > 120 ? cleanSent.slice(0, 115).trim() + '...' : cleanSent;
-      
-      const candidateDistractorsList = [...topicDistractors];
-      while (candidateDistractorsList.length < 3) {
-        candidateDistractorsList.push(`تحلیل مکمل و مفاهیم پیرامونی مرتبط با مباحث صفحه ${chunk.page_number}`);
+      const selectedStem = removeRagBoilerplateFromQuestionStem(stems[variantIndex % stems.length]);
+      // Generate concise, parallel, academically appropriate correct answer
+      const conciseAns = formatConcisePersianOption(strippedSent, subjectTopic);
+      const cleanAnswer = conciseAns.length >= 20 && conciseAns.length <= 95
+        ? conciseAns
+        : strippedSent.replace(/[,;:—\-\s]+$/, '');
+
+      // Generate concept-specific, plausible, and demonstrably incorrect distractors
+      const topicDistractors = generateConceptSpecificPersianDistractors(
+        cleanSent,
+        subjectTopic,
+        doc.chunks || [],
+        chunk.id,
+        seqIndex,
+        variantIndex,
+        usedOptions,
+        cleanAnswer
+      );
+
+      // If source does not provide enough distinct evidence to create valid distractors,
+      // safely reject candidate rather than fabricating content (Requirement 6).
+      if (!topicDistractors || topicDistractors.length < 3) {
+        return null;
       }
 
       const correctPos = (seqIndex + variantIndex) % 4;
@@ -1076,7 +1116,7 @@ function synthesizeQuestionFromFact(
         if (pos === correctPos) {
           options.push(cleanAnswer);
         } else {
-          options.push(candidateDistractorsList[dIdx++] || `تحلیل گزاره صفحه ${chunk.page_number}`);
+          options.push(topicDistractors[dIdx++]);
         }
       }
 
@@ -1088,7 +1128,7 @@ function synthesizeQuestionFromFact(
         question_text: selectedStem,
         options,
         correct_answer: cleanAnswer,
-        explanation: `مستند به متن منبع (صفحه ${chunk.page_number}): "${cleanSent.slice(0, 130)}"`,
+        explanation: `مستند به متن منبع (صفحه ${chunk.page_number}): "${strippedSent.length > 130 ? strippedSent.slice(0, 125).trim() + '...' : strippedSent}"`,
         source_document_name: doc.filename,
         source_page: chunk.page_number,
         source_chapter: chunk.chapter || 'بخش آموزشی',
@@ -1097,6 +1137,16 @@ function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     } else if (targetType === 'true_false') {
+      const proposition = strippedSent;
+      const words = proposition.split(/\s+/).filter(Boolean);
+      // Validate that proposition is complete, substantive, and not an incomplete fragment
+      if (proposition.length < 20 || words.length < 4) {
+        return null;
+      }
+
+      const cleanProp = proposition.replace(/[,;:—\-\s]+$/, '');
+      const terminalProp = /[.!?؛۔]$/.test(cleanProp) ? cleanProp : cleanProp + '.';
+
       const lang = doc.detected_language;
       const tfOpts = lang === 'ps'
         ? ['سمه', 'ناسمه']
@@ -1108,14 +1158,14 @@ function synthesizeQuestionFromFact(
       const tfCorrect = tfOpts[0];
 
       const prefix = lang === 'ps'
-        ? 'سمه که ناسمه: د متن د محتوا پر بنسټ'
+        ? 'سمه که ناسمه'
         : lang === 'ur'
-        ? 'درست یا غلط: متن کی روشنی میں'
+        ? 'درست یا غلط'
         : lang === 'ar'
-        ? 'صحيح أم خطأ: وفقاً لنص المصدر'
-        : 'صحیح یا غلط: بر اساس متن منبع';
+        ? 'صحيح أم خطأ'
+        : 'صحیح یا غلط';
 
-      const tfStem = `${prefix} (صفحه ${chunk.page_number})، ${cleanSent.slice(0, 130)}`;
+      const tfStem = removeRagBoilerplateFromQuestionStem(`${prefix}: ${terminalProp}`);
       return {
         question_type: 'true_false',
         marks: 1.0,
@@ -1124,7 +1174,7 @@ function synthesizeQuestionFromFact(
         question_text: tfStem,
         options: tfOpts,
         correct_answer: tfCorrect,
-        explanation: `استناد مستقیم به متن منبع: "${cleanSent.slice(0, 120)}" (صفحه ${chunk.page_number}).`,
+        explanation: `استناد مستقیم به متن منبع (صفحه ${chunk.page_number}): "${terminalProp}"`,
         source_document_name: doc.filename,
         source_page: chunk.page_number,
         source_chapter: chunk.chapter || 'اسناد و تحلیل',
@@ -1133,17 +1183,19 @@ function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     } else if (targetType === 'fill_blank') {
-      const words = cleanSent.split(/\s+/).filter((w) => w.length >= 3 && !/^(این|آن|اما|زیرا|برای|که|چون|نیز|پس)$/.test(w));
-      const targetWord = words.find((w) => ['دموکراسی', 'قانون', 'انتخابات', 'تفکیک', 'جامعه', 'شهروندان', 'مشارکت', 'عدالت', 'آزادی', 'پارلمان', 'قضائیه'].includes(w)) ||
+      const words = strippedSent.split(/\s+/).filter((w) => w.length >= 3 && !/^(این|آن|اما|زیرا|برای|که|چون|نیز|پس|اگر|چه|شد|شدند|است|بود|بودند)$/.test(w));
+      const targetWord = words.find((w) => ['دموکراسی', 'قانون', 'انتخابات', 'تفکیک', 'جامعه', 'شهروندان', 'مشارکت', 'عدالت', 'آزادی', 'پارلمان', 'قضائیه', 'حقوق', 'توسعه', 'حاکمیت'].includes(w)) ||
         words[Math.floor(words.length / 2)] ||
         'قانون';
-      const blanked = cleanSent.replace(targetWord, '[_____]');
+      const cleanProp = strippedSent.replace(/[,;:—\-\s]+$/, '');
+      const terminalProp = /[.!?؛۔]$/.test(cleanProp) ? cleanProp : cleanProp + '.';
+      const blanked = terminalProp.replace(targetWord, '[_____]');
       return {
         question_type: 'fill_blank',
         marks: 2.0,
         difficulty: 'medium',
         bloom_level: 'remember',
-        question_text: `جای خالی را با توجه به متن صفحه ${chunk.page_number} تکمیل نمایید: ${blanked.length > 140 ? blanked.slice(0, 135) + '...' : blanked}`,
+        question_text: `جای خالی را با کلمه مناسب تکمیل نمایید: ${blanked}`,
         options: null,
         correct_answer: targetWord,
         explanation: `واژه کلیدی «${targetWord}» مستند به متن منبع (صفحه ${chunk.page_number}).`,
@@ -1155,14 +1207,25 @@ function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     } else if (targetType === 'essay') {
+      const subjectTopic = extractPersianEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+      const essayStems = [
+        `ابعاد راهبردی، موانع اجرایی و راه‌کارهای تحقق «${subjectTopic}» را به تفصیل تحلیل و ارزیابی نمایید.`,
+        `تأثیرات ساختاری و پیامدهای کلیدی «${subjectTopic}» را در یک مقاله تحلیلی جامع مورد بررسی قرار دهید.`,
+        `ابعاد مفهومی و کاربردی «${subjectTopic}» را واکاوی نموده و الزامات اجرایی آن را تشریح فرمایید.`,
+        `ضرورت، چالش‌ها و دستاوردهای مرتبط با «${subjectTopic}» را به گونه‌ای مستدل تحلیل نمایید.`,
+      ];
+      const selectedEssayStem = removeRagBoilerplateFromQuestionStem(essayStems[(seqIndex + variantIndex) % essayStems.length]);
       return {
         question_type: 'essay',
         marks: 5.0,
         difficulty: 'hard',
         bloom_level: 'evaluate',
-        question_text: `با استناد به تحلیل ارائه‌شده در صفحه ${chunk.page_number} پیرامون «${keyPhrase}»، ابعاد راهبردی، موانع اجرایی و راه‌کارهای تحقق آن را به تفصیل ارزیابی و تحلیل نمایید.`,
+        question_text: selectedEssayStem,
         options: null,
-        correct_answer: `پاسخ تحلیلی جامع بر مبنای متن منبع: تبیین ابعاد کلیدی ${keyPhrase}، بررسی چالش‌های ساختاری و ارائه راه‌کارهای عملی مستند به متن.`,
+        correct_answer: `تحلیل مستند به مفاهیم آموزشی (صفحه ${chunk.page_number}): ${strippedSent.replace(/[,;:—\-\s]+$/, '') + (/[.!?؛۔]$/.test(strippedSent) ? '' : '.')}`,
         explanation: `معیار نمره‌دهی: ۱. انسجام استدلال (۱.۵ نمره)، ۲. استناد دقیق به مفاهیم صفحه ${chunk.page_number} (۲ نمره)، ۳. وضوح تحلیل و راه‌کارها (۱.۵ نمره).`,
         source_document_name: doc.filename,
         source_page: chunk.page_number,
@@ -1172,17 +1235,26 @@ function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     } else {
-      const saStem = variantIndex % 2 === 0
-        ? `بر اساس متن آموزشی صفحه ${chunk.page_number}، اهمیت و ابعاد کلیدی گزاره «${keyPhrase}» را در ۲ الی ۳ جمله تبیین نمایید.`
-        : `با استناد به مفاهیم ارائه شده در صفحه ${chunk.page_number}، ابعاد کلیدی و پیامدهای «${keyPhrase}» را شرح دهید.`;
+      const subjectTopic = extractPersianEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+      const saStems = [
+        `اهمیت و ابعاد کلیدی «${subjectTopic}» را در ۲ الی ۳ جمله تبیین نمایید.`,
+        `پیامدها و کارکردهای اصلی «${subjectTopic}» را به صورت مختصر شرح دهید.`,
+        `نقش و جایگاه محوری «${subjectTopic}» را به اختصار توضیح دهید.`,
+        `ویژگی‌ها و نکات اساسی در رابطه با «${subjectTopic}» را بیان فرمایید.`,
+      ];
+      const selectedSaStem = removeRagBoilerplateFromQuestionStem(saStems[(seqIndex + variantIndex) % saStems.length]);
+      const cleanEvidence = strippedSent.replace(/[,;:—\-\s]+$/, '') + (/[.!?؛۔]$/.test(strippedSent) ? '' : '.');
       return {
         question_type: 'short_answer',
         marks: 3.0,
         difficulty: 'medium',
         bloom_level: 'analyze',
-        question_text: saStem,
+        question_text: selectedSaStem,
         options: null,
-        correct_answer: `تحلیل مستند به متن منبع: ${cleanSent.slice(0, 160)}`,
+        correct_answer: `تحلیل مستند به مفاهیم آموزشی (صفحه ${chunk.page_number}): ${cleanEvidence}`,
         explanation: `معیار نمره‌دهی: ۱. وضوح استناد به متن (۱.۵ نمره)، ۲. دقت تحلیل مفهومی (۱.۵ نمره). (صفحه ${chunk.page_number})`,
         source_document_name: doc.filename,
         source_page: chunk.page_number,
@@ -3727,6 +3799,7 @@ function generateGroundedQuestionsForGroups(
   const allGeneratedQuestions: any[] = [];
   const usedFactIndicesByGroup: Array<Set<number>> = Array.from({ length: groupsCount }, () => new Set());
   const globalUsedFacts: Set<number> = new Set();
+  const globalUsedOptions: Set<string> = new Set();
 
   for (let qIdx = 0; qIdx < requestedTypes.length; qIdx++) {
     const type = requestedTypes[qIdx];
@@ -3742,7 +3815,7 @@ function generateGroundedQuestionsForGroups(
         if (usedFactIndicesByGroup[g].has(fIdx)) continue;
 
         const fact = candidateFacts[fIdx];
-        const candidateQ = synthesizeQuestionFromFact(doc, fact.chunk, fact.sentence, type, bloomEnabled, qIdx, 0);
+        const candidateQ = synthesizeQuestionFromFact(doc, fact.chunk, fact.sentence, type, bloomEnabled, qIdx, g, globalUsedOptions);
         if (!candidateQ) continue;
 
         const isDuplicate = allGeneratedQuestions.some((existing) => areQuestionsDuplicate(candidateQ, existing));
@@ -3757,6 +3830,12 @@ function generateGroundedQuestionsForGroups(
       if (synthesizedForSlot) {
         groupsQuestions[g].push(synthesizedForSlot);
         allGeneratedQuestions.push(synthesizedForSlot);
+        if (synthesizedForSlot.options && Array.isArray(synthesizedForSlot.options)) {
+          for (const opt of synthesizedForSlot.options) {
+            const normOpt = opt.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (normOpt) globalUsedOptions.add(normOpt);
+          }
+        }
       }
     }
   }
@@ -4367,8 +4446,8 @@ async function startServer() {
 
   app.post('/api/exams/generate', async (req: Request, res: Response) => {
     try {
+      const document_id = req.body.document_id || (Array.isArray(req.body.document_ids) ? req.body.document_ids[0] : undefined);
       const {
-        document_id,
         selected_pages,
         title,
         subject,
@@ -4394,7 +4473,7 @@ async function startServer() {
         });
       }
 
-      const qConfig = question_types_config || { mcq: 2, true_false: 1, short_answer: 1 };
+      const qConfig = req.body.question_types_config || req.body.question_types || { mcq: 2, true_false: 1, short_answer: 1 };
       const totalRequestedQs =
         (qConfig.mcq || 0) +
         (qConfig.true_false || 0) +
@@ -4990,8 +5069,9 @@ async function startServer() {
         .filter((s) => s.length > 20 && !s.endsWith('?') && !/^Why\b/i.test(s));
     };
 
-    // Track sentences and questions in use across ALL groups of this exam to guarantee no cross-group duplication
+    // Track sentences, questions, and options in use across ALL groups of this exam to guarantee no cross-group duplication
     const usedSentences = new Set<string>();
+    const usedOptions = new Set<string>();
     const allOtherExamQuestions: QuestionRecord[] = [];
     for (const group of exam.groups) {
       for (const q of group.questions) {
@@ -5000,6 +5080,12 @@ async function startServer() {
         if (q.source_evidence) usedSentences.add(normalizeQuestionText(q.source_evidence));
         if (q.question_text) usedSentences.add(normalizeQuestionText(q.question_text));
         if (q.correct_answer) usedSentences.add(normalizeQuestionText(q.correct_answer));
+        if (q.options && Array.isArray(q.options)) {
+          for (const opt of q.options) {
+            const normOpt = opt.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (normOpt) usedOptions.add(normOpt);
+          }
+        }
       }
     }
 
@@ -5061,7 +5147,8 @@ async function startServer() {
           targetQ.question_type,
           Boolean(exam.bloom_enabled),
           targetQ.question_order,
-          variantSeed + attempt
+          variantSeed + attempt,
+          usedOptions
         );
         if (candidateQ) {
           const isDup = allOtherExamQuestions.some((eq) => areQuestionsDuplicate(candidateQ, eq));
@@ -5083,7 +5170,8 @@ async function startServer() {
         targetQ.question_type,
         Boolean(exam.bloom_enabled),
         targetQ.question_order,
-        variantSeed
+        variantSeed,
+        usedOptions
       );
     }
 
@@ -5094,9 +5182,12 @@ async function startServer() {
     }
 
     // Clean question text of ANY internal labels, prefixes, or debug strings
-    const cleanQText = synthesized.question_text
-      .replace(/^(Regenerated:\s*|Focused Concept\s*\([^)]*\):\s*)+/i, '')
-      .trim();
+    const cleanQText = removeRagBoilerplateFromQuestionStem(
+      synthesized.question_text
+        .replace(/^(Regenerated:\s*|Focused Concept\s*\([^)]*\):\s*)+/i, '')
+        .trim(),
+      isPersian
+    );
 
     // Enforce MCQ constraints: exactly 4 non-empty, distinct options with no placeholders
     let cleanOptions: string[] | null = null;
@@ -5140,7 +5231,8 @@ async function startServer() {
         for (const c of doc.chunks) {
           const sents = getSentences(c.content);
           for (const s of sents) {
-            const trimmed = s.slice(0, 110).trim();
+            const cleanS = isPersian ? cleanLeadingPersianDiscourseMarkers(s).trim() : s.trim();
+            const trimmed = isPersian ? cleanS : (cleanS.length > 120 ? cleanS.slice(0, 115).trim() : cleanS);
             if (trimmed.length >= 15 && !rawOptions.includes(trimmed)) {
               rawOptions.push(trimmed);
             }

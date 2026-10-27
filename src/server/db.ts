@@ -761,6 +761,7 @@ class ExamCraftDatabase {
   }
 
   public getDocumentById(id: string): DocumentRecord | null {
+    if (!id || typeof id !== 'string') return null;
     const docStmt = this.db.prepare('SELECT * FROM documents WHERE id = ?');
     const row = docStmt.get(id) as any;
     if (!row) return null;
@@ -931,6 +932,7 @@ class ExamCraftDatabase {
   }
 
   public getExamById(id: string): ExamRecord | null {
+    if (!id || typeof id !== 'string') return null;
     const examStmt = this.db.prepare('SELECT * FROM exams WHERE id = ?');
     const row = examStmt.get(id) as any;
     if (!row) return null;

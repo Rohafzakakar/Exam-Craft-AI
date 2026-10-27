@@ -75,8 +75,12 @@ export function areQuestionsDuplicate(q1: QuestionCandidate, q2: QuestionCandida
     const set1 = new Set(opts1);
     const set2 = new Set(opts2);
     const optOverlap = computeJaccardSimilarity(set1, set2);
-    // If 3 of 4 options are identical (>= 0.70 overlap), it is a duplicate question regardless of order!
-    if (optOverlap >= 0.70) {
+    let commonCount = 0;
+    for (const opt of set1) {
+      if (set2.has(opt)) commonCount++;
+    }
+    // If 2 or more options are identical across distinct questions (>= 0.40 overlap), flag as duplicate option set!
+    if (commonCount >= 2 || optOverlap >= 0.40) {
       return true;
     }
   }
@@ -90,14 +94,16 @@ export function areQuestionsDuplicate(q1: QuestionCandidate, q2: QuestionCandida
   }
 
   // 4. Substantially equivalent correct answers (for non-binary questions)
+  // 4. Substantially equivalent correct answers (for non-binary, non-essay questions)
   if (q1.correct_answer && q2.correct_answer) {
     const normAns1 = normalizeQuestionText(q1.correct_answer);
     const normAns2 = normalizeQuestionText(q2.correct_answer);
     const isBinaryAns =
       (normAns1 === 'true' || normAns1 === 'false' || normAns1 === 'صحیح' || normAns1 === 'غلط') &&
       (normAns2 === 'true' || normAns2 === 'false' || normAns2 === 'صحیح' || normAns2 === 'غلط');
+    const isEssay = q1.question_type === 'essay' || q2.question_type === 'essay';
 
-    if (!isBinaryAns) {
+    if (!isBinaryAns && !isEssay) {
       if (normAns1 === normAns2) {
         return true;
       }
@@ -107,7 +113,7 @@ export function areQuestionsDuplicate(q1: QuestionCandidate, q2: QuestionCandida
       if (ansSim >= 0.45) {
         return true;
       }
-    } else {
+    } else if (isBinaryAns) {
       // For True/False, flag if question stems have high similarity
       if (stemSim >= 0.45) {
         return true;
