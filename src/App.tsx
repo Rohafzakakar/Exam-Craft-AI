@@ -13,9 +13,11 @@ import {
   User,
   LogOut,
   Sparkles,
+  LayoutDashboard,
 } from 'lucide-react';
 import { SecureLLMSettingsModal } from './components/SecureLLMSettingsModal';
 import { ExamWorkspace } from './components/ExamWorkspace';
+import { TeacherDashboard } from './components/TeacherDashboard';
 import { AuthModal } from './components/AuthModal';
 import { ExamHistoryModal, SavedExamSummary } from './components/ExamHistoryModal';
 import {
@@ -34,6 +36,7 @@ export default function App() {
 
   // Authentication & History States
   const [currentUser, setCurrentUser] = useState<TeacherUser | null>(getSavedUser());
+  const [mainView, setMainView] = useState<'dashboard' | 'workspace'>(getSavedUser() ? 'dashboard' : 'workspace');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [savedExams, setSavedExams] = useState<SavedExamSummary[]>([]);
@@ -98,16 +101,19 @@ export default function App() {
 
   const handleAuthSuccess = (user: TeacherUser) => {
     setCurrentUser(user);
+    setMainView('dashboard');
     window.dispatchEvent(new CustomEvent('examcraft_auth_changed'));
     fetchExamsList();
   };
 
   const handleSelectExamFromHistory = (examId: string) => {
     setActiveExamId(examId);
+    setMainView('workspace');
   };
 
   const handleCreateNewExam = () => {
     setActiveExamId(null);
+    setMainView('workspace');
   };
 
   const handleDeleteExamFromHistory = (examId: string) => {
@@ -134,6 +140,34 @@ export default function App() {
               Source-Grounded Examination Platform for Educators
             </p>
           </div>
+        </div>
+
+        {/* View Switcher Controls */}
+        <div className="flex items-center gap-1 p-1 bg-stone-100/90 rounded-xl border border-stone-200/60 shrink-0">
+          <button
+            onClick={() => setMainView('dashboard')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              mainView === 'dashboard'
+                ? 'bg-white text-[#9D174D] shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Teacher Dashboard</span>
+            <span className="sm:hidden">Dashboard</span>
+          </button>
+          <button
+            onClick={() => setMainView('workspace')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              mainView === 'workspace'
+                ? 'bg-white text-[#9D174D] shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Exam Workspace</span>
+            <span className="sm:hidden">Workspace</span>
+          </button>
         </div>
 
         {/* Header Actions */}
@@ -215,68 +249,89 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Dashboard Container */}
+      {/* Main Container */}
       <main className="max-w-6xl mx-auto p-6 md:p-8 flex-1 w-full space-y-8">
-        {/* LLM Credential Banner Card */}
-        <div
-          className={`no-print p-6 rounded-2xl border transition-all ${
-            isLlmConfigured
-              ? 'bg-emerald-50/60 border-emerald-200/90'
-              : 'bg-gradient-to-r from-amber-50/90 to-pink-50/70 border-amber-200/90'
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
-                  isLlmConfigured
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-[#9D174D] text-white'
-                }`}
-              >
-                {isLlmConfigured ? (
-                  <CheckCircle2 className="w-6 h-6" />
-                ) : (
-                  <ShieldCheck className="w-6 h-6" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-stone-900">
-                    {isLlmConfigured
-                      ? 'OpenRouter LLM Ready in Server Memory'
-                      : 'OpenRouter Credential Required'}
-                  </h2>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/90 border border-stone-200 text-stone-700">
-                    Model: {activeModel}
-                  </span>
+        {mainView === 'dashboard' ? (
+          <TeacherDashboard
+            currentUser={currentUser}
+            onSelectExam={(examId) => {
+              setActiveExamId(examId);
+              setMainView('workspace');
+            }}
+            onCreateNewExam={() => {
+              setActiveExamId(null);
+              setMainView('workspace');
+            }}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            onProfileUpdated={(user) => {
+              setCurrentUser(user);
+            }}
+          />
+        ) : (
+          <div className="space-y-8">
+            {/* LLM Credential Banner Card */}
+            <div
+              className={`no-print p-6 rounded-2xl border transition-all ${
+                isLlmConfigured
+                  ? 'bg-emerald-50/60 border-emerald-200/90'
+                  : 'bg-gradient-to-r from-amber-50/90 to-pink-50/70 border-amber-200/90'
+              }`}
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
+                      isLlmConfigured
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-[#9D174D] text-white'
+                    }`}
+                  >
+                    {isLlmConfigured ? (
+                      <CheckCircle2 className="w-6 h-6" />
+                    ) : (
+                      <ShieldCheck className="w-6 h-6" />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-stone-900">
+                        {isLlmConfigured
+                          ? 'OpenRouter LLM Ready in Server Memory'
+                          : 'OpenRouter Credential Required'}
+                      </h2>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/90 border border-stone-200 text-stone-700">
+                        Model: {activeModel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-600 max-w-2xl leading-relaxed">
+                      {isLlmConfigured
+                        ? 'Your API key is securely held in server RAM. It is never stored in browser storage, never written to disk or database, and never committed to source files.'
+                        : 'To enable automated question generation, enter your OpenRouter key into the secure password-masked modal. Keys are transmitted over HTTPS directly to server memory only.'}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-stone-600 max-w-2xl leading-relaxed">
-                  {isLlmConfigured
-                    ? 'Your API key is securely held in server RAM. It is never stored in browser storage, never written to disk or database, and never committed to source files.'
-                    : 'To enable automated question generation, enter your OpenRouter key into the secure password-masked modal. Keys are transmitted over HTTPS directly to server memory only.'}
-                </p>
+
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
+                >
+                  <Key className="w-4 h-4" />
+                  <span>{isLlmConfigured ? 'Manage LLM Settings' : 'Enter API Key Securely'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
-            >
-              <Key className="w-4 h-4" />
-              <span>{isLlmConfigured ? 'Manage LLM Settings' : 'Enter API Key Securely'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            {/* Active Educator Examination Workspace */}
+            <ExamWorkspace
+              isLlmConfigured={isLlmConfigured}
+              externalActiveExamId={activeExamId}
+              onOpenHistory={() => setIsHistoryModalOpen(true)}
+              onExamsUpdated={(exams) => setSavedExams(exams as any)}
+              onBackToDashboard={() => setMainView('dashboard')}
+            />
           </div>
-        </div>
-
-        {/* Active Educator Examination Workspace */}
-        <ExamWorkspace
-          isLlmConfigured={isLlmConfigured}
-          externalActiveExamId={activeExamId}
-          onOpenHistory={() => setIsHistoryModalOpen(true)}
-          onExamsUpdated={(exams) => setSavedExams(exams as any)}
-        />
+        )}
 
         {/* Phase 1 Verification Overview & Persistence Architecture */}
         <div className="no-print space-y-4">

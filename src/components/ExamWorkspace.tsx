@@ -23,9 +23,10 @@ import {
   Eye,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
 } from 'lucide-react';
 import { AcademicPaperPreview } from './AcademicPaperPreview';
-import { authFetch } from '../utils/auth';
+import { authFetch, getAuthToken, getGuestSessionId } from '../utils/auth';
 
 interface DocumentInfo {
   id: string;
@@ -113,6 +114,7 @@ export interface ExamWorkspaceProps {
   externalActiveExamId?: string | null;
   onOpenHistory?: () => void;
   onExamsUpdated?: (exams: Exam[]) => void;
+  onBackToDashboard?: () => void;
 }
 
 export function ExamWorkspace({
@@ -120,6 +122,7 @@ export function ExamWorkspace({
   externalActiveExamId,
   onOpenHistory,
   onExamsUpdated,
+  onBackToDashboard,
 }: ExamWorkspaceProps) {
   // Step navigation: 1: Upload, 2: Configure & Generate, 3: Review & Groups
   const [step, setStep] = useState<number>(1);
@@ -172,6 +175,12 @@ export function ExamWorkspace({
     let url = `/api/exams/${activeExam.id}/export/${format}?target=${exportTarget}&include_references=${includeProvenance}`;
     if (currentGroupId) {
       url += `&group_id=${currentGroupId}`;
+    }
+    const token = getAuthToken();
+    if (token) {
+      url += `&token=${encodeURIComponent(token)}`;
+    } else {
+      url += `&session_id=${encodeURIComponent(getGuestSessionId())}`;
     }
     window.location.href = url;
   };
@@ -742,7 +751,18 @@ export function ExamWorkspace({
   return (
     <div className="space-y-6">
       {/* Workflow Navigation Pills */}
-      <div className="no-print flex items-center gap-2 border-b border-stone-200/80 pb-4">
+      <div className="no-print flex items-center justify-between border-b border-stone-200/80 pb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
+          {onBackToDashboard && (
+            <button
+              onClick={onBackToDashboard}
+              className="mr-1 px-3 py-2 rounded-xl text-xs font-bold text-[#9D174D] bg-pink-50 hover:bg-pink-100 border border-pink-200 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              title="Return to Teacher Dashboard"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </button>
+          )}
         <button
           onClick={() => setStep(1)}
           className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
@@ -791,6 +811,7 @@ export function ExamWorkspace({
           </span>
           Review Groups & Answer Keys
         </button>
+        </div>
       </div>
 
       {/* STEP 1: Upload & Select Document */}

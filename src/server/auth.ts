@@ -111,28 +111,32 @@ export function verifyToken(token: string): TokenPayload | null {
 export function authenticateUserOrGuest(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
   const guestHeader = (req.headers['x-guest-session-id'] as string) || '';
+  const queryToken = (req.query?.token as string) || '';
+  const queryGuestId = (req.query?.session_id as string) || '';
 
   let authContext: AuthContext = {
     userId: null,
-    sessionId: guestHeader.trim() || 'default',
+    sessionId: guestHeader.trim() || queryGuestId.trim() || 'default',
     isGuest: true,
     user: null,
   };
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7).trim();
+  const effectiveToken = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : queryToken.trim();
 
-    if (token.startsWith('guest_')) {
+  if (effectiveToken) {
+    if (effectiveToken.startsWith('guest_')) {
       // Guest bearer token
       authContext = {
         userId: null,
-        sessionId: token,
+        sessionId: effectiveToken,
         isGuest: true,
         user: null,
       };
     } else {
       // Signed JWT / HMAC Teacher Token
-      const verified = verifyToken(token);
+      const verified = verifyToken(effectiveToken);
       if (verified) {
         const user = db.getUserById(verified.userId);
         if (user) {
@@ -145,9 +149,8 @@ export function authenticateUserOrGuest(req: Request, res: Response, next: NextF
         }
       } else {
         // Token was provided but is invalid or expired
-        // If guest header was also provided, preserve guest context
-        if (guestHeader) {
-          authContext.sessionId = guestHeader;
+        if (guestHeader || queryGuestId) {
+          authContext.sessionId = guestHeader.trim() || queryGuestId.trim();
         }
       }
     }

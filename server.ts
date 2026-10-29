@@ -4164,6 +4164,27 @@ async function startServer() {
     });
   });
 
+  app.patch('/api/auth/profile', (req: Request, res: Response) => {
+    if (!req.auth.userId) {
+      return res.status(401).json({ detail: 'Authentication required to update profile preferences.' });
+    }
+    const { full_name, institution } = req.body;
+    const updated = db.updateUserProfile(req.auth.userId, { full_name, institution });
+    if (!updated) {
+      return res.status(404).json({ detail: 'User not found.' });
+    }
+    return res.json({
+      user: {
+        id: updated.id,
+        email: updated.email,
+        full_name: updated.full_name,
+        institution: updated.institution,
+        role: updated.role,
+      },
+      message: 'Profile and institution preferences updated successfully.',
+    });
+  });
+
   // ==========================================
   // 3. DOCUMENTS (PERSISTENT SQLITE)
   // ==========================================
@@ -4421,6 +4442,26 @@ async function startServer() {
     return res.json(chunks);
   });
 
+  app.get('/api/documents', (req: Request, res: Response) => {
+    const docs = db.getDocumentsByOwner(req.auth.userId, req.auth.sessionId);
+    const summaries = docs.map((d) => ({
+      id: d.id,
+      user_id: d.user_id,
+      session_id: d.session_id,
+      filename: d.filename,
+      file_type: d.file_type,
+      file_size_bytes: d.file_size_bytes,
+      detected_language: d.detected_language,
+      is_rtl: d.is_rtl,
+      total_pages: d.total_pages,
+      status: d.status,
+      metadata: d.metadata,
+      chunks_count: d.chunks ? d.chunks.length : 0,
+      created_at: d.created_at,
+    }));
+    return res.json(summaries);
+  });
+
   app.delete('/api/documents/:id', (req: Request, res: Response) => {
     const doc = db.getDocumentById(req.params.id);
     if (!doc) {
@@ -4429,8 +4470,14 @@ async function startServer() {
     if (doc.id === 'doc-cell-biology-101') {
       return res.status(403).json({ detail: 'Cannot delete default seed document.' });
     }
-    if (doc.user_id && doc.user_id !== req.auth.userId) {
-      return res.status(403).json({ detail: 'Permission denied.' });
+    if (doc.user_id) {
+      if (doc.user_id !== req.auth.userId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
+    } else {
+      if (!req.auth.sessionId || doc.session_id !== req.auth.sessionId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
     }
     db.deleteDocument(req.params.id);
     return res.status(204).send();
@@ -4654,6 +4701,20 @@ async function startServer() {
       return res.status(404).json({ detail: 'Exam not found' });
     }
 
+    if (exam.id === 'exam-cell-bio-midterm') {
+      return res.status(403).json({ detail: 'Cannot modify default seed examination.' });
+    }
+
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
+    }
+
     const { title, subject, institution, faculty, teacher_name, grade_level, exam_date, duration_minutes } = req.body;
     const updated = db.updateExamMetadata(req.params.id, {
       title,
@@ -4713,11 +4774,15 @@ async function startServer() {
     }
 
     // Ownership check
-    if (exam.session_id !== 'default') {
-      if (req.auth.userId && exam.user_id && exam.user_id !== req.auth.userId) {
+    if (exam.id === 'exam-cell-bio-midterm') {
+      return res.status(403).json({ detail: 'Cannot modify questions in default seed examination.' });
+    }
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
-      if (req.auth.isGuest && exam.session_id && exam.session_id !== req.auth.sessionId) {
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
     }
@@ -4735,8 +4800,8 @@ async function startServer() {
       }
     }
 
-    if (!targetQuestion) {
-      return res.status(404).json({ detail: 'Question not found' });
+    if (!targetQuestion || targetQuestion.exam_id !== exam.id) {
+      return res.status(404).json({ detail: 'Question not found in this examination.' });
     }
 
     const { question_text, marks, options, correct_answer, explanation } = req.body;
@@ -4829,7 +4894,7 @@ async function startServer() {
       options: targetQuestion.options,
       correct_answer: targetQuestion.correct_answer,
       explanation: targetQuestion.explanation,
-    });
+    }, exam.id);
 
     // Recalculate total marks across exam based on all groups
     const targetGroup = exam.groups[targetGroupIndex];
@@ -4855,11 +4920,15 @@ async function startServer() {
     }
 
     // Ownership check
-    if (exam.session_id !== 'default') {
-      if (req.auth.userId && exam.user_id && exam.user_id !== req.auth.userId) {
+    if (exam.id === 'exam-cell-bio-midterm') {
+      return res.status(403).json({ detail: 'Cannot delete questions from default seed examination.' });
+    }
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
-      if (req.auth.isGuest && exam.session_id && exam.session_id !== req.auth.sessionId) {
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
     }
@@ -4876,8 +4945,8 @@ async function startServer() {
       }
     }
 
-    if (!targetQ || targetGroupIndex === -1) {
-      return res.status(404).json({ detail: 'Question not found' });
+    if (!targetQ || targetGroupIndex === -1 || targetQ.exam_id !== exam.id) {
+      return res.status(404).json({ detail: 'Question not found in this examination.' });
     }
 
     const targetGroup = exam.groups[targetGroupIndex];
@@ -4893,7 +4962,7 @@ async function startServer() {
     const removedIdx = targetGroup.questions.findIndex((q) => q.id === targetQ!.id);
     if (removedIdx !== -1) {
       targetGroup.questions.splice(removedIdx, 1);
-      db.deleteQuestion(targetQ.id);
+      db.deleteQuestion(targetQ.id, exam.id);
     }
 
     // Re-sequence question_order within the affected targetGroup ONLY
@@ -4934,11 +5003,16 @@ async function startServer() {
       return res.status(404).json({ detail: 'Exam not found' });
     }
 
-    if (exam.session_id !== 'default') {
-      if (req.auth.userId && exam.user_id && exam.user_id !== req.auth.userId) {
+    if (exam.id === 'exam-cell-bio-midterm') {
+      return res.status(403).json({ detail: 'Cannot modify questions in default seed examination.' });
+    }
+
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
-      if (req.auth.isGuest && exam.session_id && exam.session_id !== req.auth.sessionId) {
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
     }
@@ -4981,11 +5055,16 @@ async function startServer() {
       return res.status(404).json({ detail: 'Exam not found' });
     }
 
-    if (exam.session_id !== 'default') {
-      if (req.auth.userId && exam.user_id && exam.user_id !== req.auth.userId) {
+    if (exam.id === 'exam-cell-bio-midterm') {
+      return res.status(403).json({ detail: 'Cannot regenerate questions in default seed examination.' });
+    }
+
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
-      if (req.auth.isGuest && exam.session_id && exam.session_id !== req.auth.sessionId) {
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
         return res.status(403).json({ detail: 'Permission denied.' });
       }
     }
@@ -5002,8 +5081,8 @@ async function startServer() {
       }
     }
 
-    if (!targetQ || !foundGroup) {
-      return res.status(404).json({ detail: 'Question not found' });
+    if (!targetQ || !foundGroup || targetQ.exam_id !== exam.id) {
+      return res.status(404).json({ detail: 'Question not found in this examination.' });
     }
 
     if (!exam.document_id) {
@@ -5280,7 +5359,7 @@ async function startServer() {
       source_evidence: targetQ.source_evidence,
       bloom_level: targetQ.bloom_level,
       difficulty: targetQ.difficulty,
-    });
+    }, exam.id);
 
     return res.json(targetQ);
   });
@@ -5294,8 +5373,14 @@ async function startServer() {
     if (exam.id === 'exam-cell-bio-midterm') {
       return res.status(403).json({ detail: 'Cannot delete default seed examination.' });
     }
-    if (exam.user_id && exam.user_id !== req.auth.userId) {
-      return res.status(403).json({ detail: 'Permission denied.' });
+    if (exam.user_id) {
+      if (exam.user_id !== req.auth.userId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
+    } else {
+      if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
+        return res.status(403).json({ detail: 'Permission denied.' });
+      }
     }
     db.deleteExam(req.params.id);
     return res.status(204).send();
@@ -5306,6 +5391,19 @@ async function startServer() {
     const exam = db.getExamById(req.params.id);
     if (!exam) {
       return res.status(404).json({ detail: 'Exam not found' });
+    }
+
+    // Authorization check (seed exam is accessible for demo/tutorial)
+    if (exam.id !== 'exam-cell-bio-midterm') {
+      if (exam.user_id) {
+        if (exam.user_id !== req.auth.userId) {
+          return res.status(403).json({ detail: 'Permission denied.' });
+        }
+      } else {
+        if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
+          return res.status(403).json({ detail: 'Permission denied.' });
+        }
+      }
     }
 
     const groupId = req.query.group_id as string | undefined;
@@ -5860,6 +5958,19 @@ async function startServer() {
     const exam = db.getExamById(req.params.id);
     if (!exam) {
       return res.status(404).json({ detail: 'Exam not found' });
+    }
+
+    // Authorization check (seed exam is accessible for demo/tutorial)
+    if (exam.id !== 'exam-cell-bio-midterm') {
+      if (exam.user_id) {
+        if (exam.user_id !== req.auth.userId) {
+          return res.status(403).json({ detail: 'Permission denied.' });
+        }
+      } else {
+        if (!req.auth.sessionId || exam.session_id !== req.auth.sessionId) {
+          return res.status(403).json({ detail: 'Permission denied.' });
+        }
+      }
     }
 
     const groupId = req.query.group_id as string | undefined;

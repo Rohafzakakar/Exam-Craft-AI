@@ -2,7 +2,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const BASE_URL = 'http://localhost:3000';
+const PORT = process.env.TEST_PORT || 3000;
+const BASE_URL = `http://localhost:${PORT}`;
 
 async function runRegressionTests() {
   console.log('\n======================================================');
@@ -37,9 +38,9 @@ async function runRegressionTests() {
 
   // 2. Generate exam containing Unicode characters: ➢ (0x27a2), Dari/Persian, Arabic, bullets, quotes, dashes
   let unicodeExamId = '';
+  const guestId = `guest_unicode_test_${Date.now()}`;
   await test('Create exam containing ➢ (0x27a2) and Dari/Persian Unicode text', async () => {
     // Generate base exam under a unique guest session
-    const guestId = `guest_unicode_test_${Date.now()}`;
     const genRes = await fetch(`${BASE_URL}/api/exams/generate`, {
       method: 'POST',
       headers: {
@@ -86,7 +87,9 @@ async function runRegressionTests() {
 
   // 3. Export PDF with Unicode and ➢ (0x27a2) - Must not throw WinAnsi cannot encode
   await test('PDF export succeeds without WinAnsi encoding errors on ➢ and Persian/Dari text', async () => {
-    const res = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=both`);
+    const res = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=both`, {
+      headers: { Authorization: `Bearer ${guestId}` },
+    });
     assert.strictEqual(res.status, 200, `PDF export must return 200 OK, got ${res.status}`);
     assert.strictEqual(res.headers.get('content-type'), 'application/pdf');
 
@@ -104,12 +107,16 @@ async function runRegressionTests() {
 
   // 4. Test PDF export for exam paper only and answer key only modes
   await test('PDF export for target=exam and target=answer_key modes succeed', async () => {
-    const resExam = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=exam`);
+    const resExam = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=exam`, {
+      headers: { Authorization: `Bearer ${guestId}` },
+    });
     assert.strictEqual(resExam.status, 200);
     const bufExam = Buffer.from(await resExam.arrayBuffer());
     assert(bufExam.length > 1000);
 
-    const resKey = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=answer_key`);
+    const resKey = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/pdf?target=answer_key`, {
+      headers: { Authorization: `Bearer ${guestId}` },
+    });
     assert.strictEqual(resKey.status, 200);
     const bufKey = Buffer.from(await resKey.arrayBuffer());
     assert(bufKey.length > 1000);
@@ -117,7 +124,9 @@ async function runRegressionTests() {
 
   // 5. Test DOCX export with Unicode characters remains functional
   await test('DOCX export stream handles Unicode ➢ and Dari/Persian characters cleanly', async () => {
-    const res = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/docx?target=both`);
+    const res = await fetch(`${BASE_URL}/api/exams/${unicodeExamId}/export/docx?target=both`, {
+      headers: { Authorization: `Bearer ${guestId}` },
+    });
     assert.strictEqual(res.status, 200);
     assert(res.headers.get('content-type').includes('openxmlformats'));
 

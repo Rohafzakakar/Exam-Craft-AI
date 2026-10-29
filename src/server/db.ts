@@ -715,6 +715,22 @@ class ExamCraftDatabase {
     return updated ? updated.token_version : 1;
   }
 
+  public updateUserProfile(userId: string, updates: { full_name?: string; institution?: string }): UserRecord | null {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    const newName = updates.full_name !== undefined && updates.full_name.trim().length > 0
+      ? updates.full_name.trim()
+      : user.full_name;
+    const newInst = updates.institution !== undefined && updates.institution.trim().length > 0
+      ? updates.institution.trim()
+      : user.institution;
+    const stmt = this.db.prepare(`
+      UPDATE users SET full_name = ?, institution = ?, updated_at = ? WHERE id = ?
+    `);
+    stmt.run(newName, newInst, new Date().toISOString(), userId);
+    return this.getUserById(userId);
+  }
+
   // --- DOCUMENT METHODS ---
   public insertDocument(doc: DocumentRecord): void {
     const docStmt = this.db.prepare(`
@@ -1123,7 +1139,8 @@ class ExamCraftDatabase {
       source_evidence?: string;
       bloom_level?: string;
       difficulty?: string;
-    }
+    },
+    examId?: string
   ): boolean {
     const fields: string[] = [];
     const values: any[] = [];
@@ -1183,15 +1200,25 @@ class ExamCraftDatabase {
     values.push(new Date().toISOString());
     values.push(questionId);
 
-    const sql = `UPDATE exam_questions SET ${fields.join(', ')} WHERE id = ?`;
+    let sql = `UPDATE exam_questions SET ${fields.join(', ')} WHERE id = ?`;
+    if (examId) {
+      sql += ' AND exam_id = ?';
+      values.push(examId);
+    }
     const stmt = this.db.prepare(sql);
     stmt.run(...values);
     return true;
   }
 
-  public deleteQuestion(questionId: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM exam_questions WHERE id = ?');
-    stmt.run(questionId);
+  public deleteQuestion(questionId: string, examId?: string): boolean {
+    let sql = 'DELETE FROM exam_questions WHERE id = ?';
+    const values: any[] = [questionId];
+    if (examId) {
+      sql += ' AND exam_id = ?';
+      values.push(examId);
+    }
+    const stmt = this.db.prepare(sql);
+    stmt.run(...values);
     return true;
   }
 
