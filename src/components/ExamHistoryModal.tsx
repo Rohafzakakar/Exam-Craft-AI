@@ -15,7 +15,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-import { authFetch } from '../utils/auth';
+import { authFetch, TeacherUser } from '../utils/auth';
 
 interface ExamGroup {
   id: string;
@@ -47,6 +47,8 @@ interface ExamHistoryModalProps {
   onSelectExam: (examId: string) => void;
   onCreateNewExam: () => void;
   onDeleteExam: (examId: string) => void;
+  currentUser?: TeacherUser | null;
+  onOpenAuth?: () => void;
 }
 
 export function ExamHistoryModal({
@@ -57,6 +59,8 @@ export function ExamHistoryModal({
   onSelectExam,
   onCreateNewExam,
   onDeleteExam,
+  currentUser,
+  onOpenAuth,
 }: ExamHistoryModalProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -167,7 +171,30 @@ export function ExamHistoryModal({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          {exams.length === 0 ? (
+          {!currentUser ? (
+            <div className="text-center py-12 px-4 space-y-4 max-w-md mx-auto">
+              <div className="w-14 h-14 rounded-3xl bg-pink-50 text-[#9D174D] flex items-center justify-center mx-auto">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-stone-900">Teacher Account Required</h3>
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  Examination archives and history are preserved privately for authenticated teachers. Sign in or register to access and reopen your past examination papers across devices.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    onClose();
+                    if (onOpenAuth) onOpenAuth();
+                  }}
+                  className="px-5 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                >
+                  Sign In or Register
+                </button>
+              </div>
+            </div>
+          ) : exams.length === 0 ? (
             <div className="text-center py-12 px-4 space-y-3">
               <div className="w-14 h-14 rounded-3xl bg-pink-50 text-[#9D174D] flex items-center justify-center mx-auto">
                 <BookOpen className="w-7 h-7" />

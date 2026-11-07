@@ -75,6 +75,7 @@ export default function App() {
 
     const handleAuthExpired = () => {
       setCurrentUser(null);
+      setMainView('workspace');
       fetchExamsList();
     };
 
@@ -94,6 +95,7 @@ export default function App() {
     removeSavedUser();
     resetGuestSessionId();
     setCurrentUser(null);
+    setMainView('workspace');
     setIsAuthModalOpen(false);
     window.dispatchEvent(new CustomEvent('examcraft_auth_changed'));
     fetchExamsList();
@@ -142,47 +144,56 @@ export default function App() {
           </div>
         </div>
 
-        {/* View Switcher Controls */}
-        <div className="flex items-center gap-1 p-1 bg-stone-100/90 rounded-xl border border-stone-200/60 shrink-0">
-          <button
-            onClick={() => setMainView('dashboard')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              mainView === 'dashboard'
-                ? 'bg-white text-[#9D174D] shadow-2xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Teacher Dashboard</span>
-            <span className="sm:hidden">Dashboard</span>
-          </button>
-          <button
-            onClick={() => setMainView('workspace')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              mainView === 'workspace'
-                ? 'bg-white text-[#9D174D] shadow-2xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Exam Workspace</span>
-            <span className="sm:hidden">Workspace</span>
-          </button>
-        </div>
+        {/* View Switcher Controls (Teacher Dashboard is exclusively for authenticated educators) */}
+        {currentUser ? (
+          <div className="flex items-center gap-1 p-1 bg-stone-100/90 rounded-xl border border-stone-200/60 shrink-0">
+            <button
+              onClick={() => setMainView('dashboard')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mainView === 'dashboard'
+                  ? 'bg-white text-[#9D174D] shadow-2xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Teacher Dashboard</span>
+              <span className="sm:hidden">Dashboard</span>
+            </button>
+            <button
+              onClick={() => setMainView('workspace')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mainView === 'workspace'
+                  ? 'bg-white text-[#9D174D] shadow-2xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exam Workspace</span>
+              <span className="sm:hidden">Workspace</span>
+            </button>
+          </div>
+        ) : (
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100/90 text-stone-700 text-xs font-bold border border-stone-200/60 shadow-2xs shrink-0">
+            <Layers className="w-3.5 h-3.5 text-[#9D174D]" />
+            <span>Exam Workspace</span>
+          </div>
+        )}
 
         {/* Header Actions */}
         <div className="flex items-center gap-3">
-          {/* Exam History Button */}
-          <button
-            onClick={() => setIsHistoryModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-pink-200 bg-pink-50/80 hover:bg-pink-100 text-[#9D174D] text-xs font-bold transition-all shadow-2xs cursor-pointer"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Exam History</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#9D174D] text-white font-bold">
-              {savedExams.length}
-            </span>
-          </button>
+          {/* Exam History Button (Exclusively for Authenticated Teachers) */}
+          {currentUser && (
+            <button
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-pink-200 bg-pink-50/80 hover:bg-pink-100 text-[#9D174D] text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Exam History</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#9D174D] text-white font-bold">
+                {savedExams.length}
+              </span>
+            </button>
+          )}
 
           {/* Secure LLM Settings Button */}
           <button
@@ -251,7 +262,7 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto p-6 md:p-8 flex-1 w-full space-y-8">
-        {mainView === 'dashboard' ? (
+        {mainView === 'dashboard' && currentUser ? (
           <TeacherDashboard
             currentUser={currentUser}
             onSelectExam={(examId) => {
@@ -326,9 +337,9 @@ export default function App() {
             <ExamWorkspace
               isLlmConfigured={isLlmConfigured}
               externalActiveExamId={activeExamId}
-              onOpenHistory={() => setIsHistoryModalOpen(true)}
+              onOpenHistory={currentUser ? () => setIsHistoryModalOpen(true) : undefined}
               onExamsUpdated={(exams) => setSavedExams(exams as any)}
-              onBackToDashboard={() => setMainView('dashboard')}
+              onBackToDashboard={currentUser ? () => setMainView('dashboard') : undefined}
             />
           </div>
         )}
@@ -412,16 +423,20 @@ export default function App() {
         onSuccess={handleAuthSuccess}
       />
 
-      {/* Exam History Modal */}
-      <ExamHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-        exams={savedExams}
-        activeExamId={activeExamId}
-        onSelectExam={handleSelectExamFromHistory}
-        onCreateNewExam={handleCreateNewExam}
-        onDeleteExam={handleDeleteExamFromHistory}
-      />
+      {/* Exam History Modal (Exclusively for Authenticated Teachers) */}
+      {currentUser && (
+        <ExamHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          exams={savedExams}
+          activeExamId={activeExamId}
+          onSelectExam={handleSelectExamFromHistory}
+          onCreateNewExam={handleCreateNewExam}
+          onDeleteExam={handleDeleteExamFromHistory}
+          currentUser={currentUser}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+        />
+      )}
     </div>
   );
 }

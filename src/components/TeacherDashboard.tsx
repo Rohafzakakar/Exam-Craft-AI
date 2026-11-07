@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -29,7 +29,7 @@ import {
   Shield,
   FileCheck2,
 } from 'lucide-react';
-import { TeacherUser, authFetch, setSavedUser } from '../utils/auth';
+import { TeacherUser, authFetch, setSavedUser, getSavedUser } from '../utils/auth';
 import { SavedExamSummary } from './ExamHistoryModal';
 
 export interface DocumentSummary {
@@ -136,7 +136,14 @@ export function TeacherDashboard({
   }, [currentUser]);
 
   // Fetch teacher's authorized exams and documents
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    const activeUser = currentUser || getSavedUser();
+    if (!activeUser) {
+      setExams([]);
+      setDocuments([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -162,7 +169,7 @@ export function TeacherDashboard({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     fetchData();
@@ -175,7 +182,7 @@ export function TeacherDashboard({
     return () => {
       window.removeEventListener('examcraft_auth_changed', handleDataChanged);
     };
-  }, []);
+  }, [fetchData]);
 
   // Summary statistics calculated strictly from authorized live data
   const stats = useMemo(() => {
@@ -436,6 +443,77 @@ export function TeacherDashboard({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
+
+  if (!currentUser) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-4 space-y-6 text-center animate-in fade-in duration-200">
+        <div className="w-16 h-16 rounded-3xl bg-pink-50 text-[#9D174D] flex items-center justify-center mx-auto shadow-inner">
+          <Shield className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-stone-900 tracking-tight">
+            Teacher Dashboard & Document Archive
+          </h2>
+          <p className="text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+            The Teacher Dashboard, persistent examination histories, and institutional document libraries are reserved exclusively for authenticated educators.
+          </p>
+        </div>
+
+        <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-xs text-left space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-stone-900">Isolated Examination History</h4>
+              <p className="text-xs text-stone-500">Securely archive, retrieve, reorder, and reopen your multi-group examination papers across sessions.</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-stone-900">Private Document Library</h4>
+              <p className="text-xs text-stone-500">Store and index your course syllabus, PDF materials, and textbooks with chunk-level inspection.</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-stone-900">Department Preferences</h4>
+              <p className="text-xs text-stone-500">Preset institutional branding, faculty headers, default test durations, and Bloom's taxonomy settings.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={onOpenAuth}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+          >
+            <User className="w-4 h-4" />
+            <span>Sign In or Register as Teacher</span>
+          </button>
+          <button
+            onClick={() => onCreateNewExam()}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold rounded-xl border border-stone-200 transition-all cursor-pointer"
+          >
+            <Layers className="w-4 h-4" />
+            <span>Continue as Guest in Workspace</span>
+          </button>
+        </div>
+
+        <p className="text-[11px] text-stone-400">
+          Guest educators can freely generate and export source-grounded exams in the Workspace without creating an account.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

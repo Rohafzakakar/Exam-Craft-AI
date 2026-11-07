@@ -10,6 +10,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Sparkles,
+  BookOpen,
+  FileText,
+  Building2,
 } from 'lucide-react';
 import {
   TeacherUser,
@@ -165,193 +168,263 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
       <div
-        className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+        className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 my-auto max-h-[94vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-6 relative">
-          <button
-            onClick={handleClose}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-lg">
-              E
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">ExamCraft Educator Portal</h2>
-              <p className="text-xs text-pink-100 font-medium">
-                Persistent examination storage & multi-group management
+        {/* Left Column: Teacher Dashboard & Document Archive Explanation (md:col-span-5) */}
+        <div className="md:col-span-5 bg-gradient-to-br from-pink-50/90 via-pink-50/50 to-white p-6 sm:p-7 border-b md:border-b-0 md:border-r border-pink-100 flex flex-col justify-between space-y-6 overflow-y-auto">
+          <div className="space-y-5">
+            {/* Header badge & title */}
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-100/90 text-[#9D174D] text-xs font-bold w-fit">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Educator Platform</span>
+              </div>
+              <h3 className="text-lg font-black text-stone-900 tracking-tight leading-snug">
+                Teacher Dashboard & Document Archive
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                The Teacher Dashboard, persistent examination histories, and institutional document libraries are reserved exclusively for authenticated educators.
               </p>
+            </div>
+
+            {/* Feature List */}
+            <div className="space-y-3.5 pt-1">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white shadow-2xs border border-pink-200/80 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-stone-900">Isolated Examination History</h4>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    Securely archive, retrieve, reorder, and reopen your multi-group examination papers across sessions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white shadow-2xs border border-pink-200/80 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-stone-900">Private Document Library</h4>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    Store and index your course syllabus, PDF materials, and textbooks with chunk-level inspection.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white shadow-2xs border border-pink-200/80 text-[#9D174D] flex items-center justify-center shrink-0 mt-0.5">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-stone-900">Department Preferences</h4>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    Preset institutional branding, faculty headers, default test durations, and Bloom's taxonomy settings.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex bg-black/20 p-1 rounded-xl mt-4">
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('login')}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                tab === 'login'
-                  ? 'bg-white text-[#9D174D] shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('register')}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                tab === 'register'
-                  ? 'bg-white text-[#9D174D] shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              Create Account
-            </button>
+          <div className="pt-4 border-t border-pink-200/60 flex items-center gap-2 text-[11px] text-stone-500">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Encrypted passwords & isolated SQLite database storage</span>
           </div>
         </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          {tab === 'register' && (
-            <>
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Full Name & Title
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Prof. Jane Harrison"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Academic Institution / Department
-                </label>
-                <div className="relative">
-                  <GraduationCap className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    placeholder="Department of Biological Sciences"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-              <input
-                type="email"
-                required
-                placeholder="instructor@university.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-              <input
-                type="password"
-                required
-                minLength={6}
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
-              />
-            </div>
-          </div>
-
-          {/* Explicit Consent Checkbox for Guest Data Migration */}
-          {tab === 'register' && (
-            <div className="p-3.5 rounded-xl bg-pink-50/70 border border-pink-200/90 space-y-1.5">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={consentImportGuest}
-                  onChange={(e) => setConsentImportGuest(e.target.checked)}
-                  className="mt-0.5 rounded text-[#9D174D] focus:ring-[#9D174D]"
-                />
-                <span className="text-xs font-bold text-stone-800 leading-tight">
-                  Import my current guest examination & documents into my new account
-                </span>
-              </label>
-              <p className="text-[11px] text-stone-500 pl-6 leading-relaxed">
-                If checked, your active guest session exam and documents will be permanently assigned to your teacher account. If unchecked, your account will start fresh.
-              </p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isLoading ? (
-              <span className="inline-block animate-spin mr-1">⏳</span>
-            ) : (
-              <ArrowRight className="w-4 h-4" />
-            )}
-            <span>
-              {tab === 'login' ? 'Sign In to Account' : 'Create Teacher Account'}
-            </span>
-          </button>
-
-          <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
-            <span>Prefer testing without an account?</span>
+        {/* Right Column: Sign In / Create Account Form (md:col-span-7) */}
+        <div className="md:col-span-7 flex flex-col justify-between overflow-y-auto">
+          {/* Modal Header */}
+          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-6 relative">
             <button
-              type="button"
               onClick={handleClose}
-              className="font-semibold text-[#9D174D] hover:underline cursor-pointer"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             >
-              Continue in Guest Mode
+              <X className="w-4 h-4" />
             </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-lg">
+                E
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">ExamCraft Educator Portal</h2>
+                <p className="text-xs text-pink-100 font-medium">
+                  Persistent examination storage & multi-group management
+                </p>
+              </div>
+            </div>
+
+            {/* Tab Switcher */}
+            <div className="flex bg-black/20 p-1 rounded-xl mt-4">
+              <button
+                type="button"
+                onClick={() => handleTabSwitch('login')}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  tab === 'login'
+                    ? 'bg-white text-[#9D174D] shadow-xs'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabSwitch('register')}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  tab === 'register'
+                    ? 'bg-white text-[#9D174D] shadow-xs'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
           </div>
-        </form>
+
+          {/* Modal Body */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+            <div className="space-y-4">
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              {tab === 'register' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Full Name & Title
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Prof. Jane Harrison"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Academic Institution / Department
+                    </label>
+                    <div className="relative">
+                      <GraduationCap className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        placeholder="Department of Biological Sciences"
+                        value={institution}
+                        onChange={(e) => setInstitution(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="instructor@university.edu"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                  />
+                </div>
+              </div>
+
+              {/* Explicit Consent Checkbox for Guest Data Migration */}
+              {tab === 'register' && (
+                <div className="p-3.5 rounded-xl bg-pink-50/70 border border-pink-200/90 space-y-1.5">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={consentImportGuest}
+                      onChange={(e) => setConsentImportGuest(e.target.checked)}
+                      className="mt-0.5 rounded text-[#9D174D] focus:ring-[#9D174D]"
+                    />
+                    <span className="text-xs font-bold text-stone-800 leading-tight">
+                      Import my current guest examination & documents into my new account
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-stone-500 pl-6 leading-relaxed">
+                    If checked, your active guest session exam and documents will be permanently assigned to your teacher account. If unchecked, your account will start fresh.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="inline-block animate-spin mr-1">⏳</span>
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                <span>
+                  {tab === 'login' ? 'Sign In to Account' : 'Create Teacher Account'}
+                </span>
+              </button>
+
+              <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+                <span>Prefer testing without an account?</span>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="font-semibold text-[#9D174D] hover:underline cursor-pointer"
+                >
+                  Continue in Guest Mode
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -26,6 +26,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { AcademicPaperPreview } from './AcademicPaperPreview';
+import { AiResistantReviewModal } from './AiResistantReviewModal';
 import { authFetch, getAuthToken, getGuestSessionId } from '../utils/auth';
 
 interface DocumentInfo {
@@ -210,6 +211,90 @@ export function ExamWorkspace({
   const [regenerateInstructions, setRegenerateInstructions] = useState<string>('');
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
+  // AI-Resistant Questions Generation & Review State
+  const [showAiResistantModal, setShowAiResistantModal] = useState<boolean>(false);
+  const [isGeneratingAiResistant, setIsGeneratingAiResistant] = useState<boolean>(false);
+  const [isApplyingAiResistant, setIsApplyingAiResistant] = useState<boolean>(false);
+  const [aiResistantDraft, setAiResistantDraft] = useState<any | null>(null);
+  const [aiResistantSuccessMessage, setAiResistantSuccessMessage] = useState<string | null>(null);
+  const [aiResistantError, setAiResistantError] = useState<string | null>(null);
+
+  const handleGenerateAiResistant = async () => {
+    if (!activeExam) return;
+    if (activeExam.id === 'exam-cell-bio-midterm') {
+      setAiResistantError(
+        activeExam.is_rtl
+          ? 'آزمون پیش‌فرض زیست‌شناسی صرفاً جنبه آموزشی داشته و قابل تغییر نیست. لطفاً از طریق اسناد آپلودشده خود آزمون جدید ایجاد فرمایید.'
+          : 'Default seed examination is read-only. Please create an examination from your uploaded documents to generate AI-resistant questions.'
+      );
+      setTimeout(() => setAiResistantError(null), 6000);
+      return;
+    }
+
+    setIsGeneratingAiResistant(true);
+    setAiResistantError(null);
+    try {
+      const res = await authFetch(`/api/exams/${activeExam.id}/generate-ai-resistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to generate AI-resistant draft questions.');
+      }
+      const data = await res.json();
+      setAiResistantDraft(data);
+      setShowAiResistantModal(true);
+    } catch (err: any) {
+      setAiResistantError(err.message || 'Error generating AI-resistant draft.');
+      setTimeout(() => setAiResistantError(null), 6000);
+    } finally {
+      setIsGeneratingAiResistant(false);
+    }
+  };
+
+  const handleApplyAiResistant = async (draftGroups: any[]) => {
+    if (!activeExam) return;
+    setIsApplyingAiResistant(true);
+    setAiResistantError(null);
+    try {
+      const res = await authFetch(`/api/exams/${activeExam.id}/apply-ai-resistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft_groups: draftGroups }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to apply AI-resistant questions.');
+      }
+      const result = await res.json();
+      setActiveExam(result.exam);
+      if (result.answer_keys) {
+        setAnswerKeys(result.answer_keys);
+      }
+      setShowAiResistantModal(false);
+      setAiResistantSuccessMessage(
+        activeExam.is_rtl
+          ? 'سوالات تحلیلی و مستند (مقاوم در برابر هوش مصنوعی) با موفقیت در تمام گروه‌ها اعمال شدند.'
+          : 'AI-Resistant analytical questions successfully applied across all exam variants.'
+      );
+      setTimeout(() => setAiResistantSuccessMessage(null), 6000);
+
+      if (onExamsUpdated) {
+        authFetch('/api/exams')
+          .then((r) => r.json())
+          .then((list) => {
+            if (Array.isArray(list)) onExamsUpdated(list);
+          })
+          .catch(() => {});
+      }
+    } catch (err: any) {
+      setAiResistantError(err.message || 'Error applying AI-resistant questions.');
+    } finally {
+      setIsApplyingAiResistant(false);
+    }
+  };
+
   const loadExamById = async (examId: string) => {
     try {
       const res = await authFetch(`/api/exams/${examId}`);
@@ -229,6 +314,9 @@ export function ExamWorkspace({
   useEffect(() => {
     if (externalActiveExamId) {
       loadExamById(externalActiveExamId);
+    } else if (externalActiveExamId === null) {
+      setActiveExam(null);
+      setStep(1);
     }
   }, [externalActiveExamId]);
 
@@ -1259,6 +1347,33 @@ export function ExamWorkspace({
               )}
 
               <button
+                onClick={handleGenerateAiResistant}
+                disabled={isGeneratingAiResistant}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                title={
+                  activeExam.is_rtl
+                    ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر هوش مصنوعی)'
+                    : 'Generate AI-Resistant Questions'
+                }
+              >
+                {isGeneratingAiResistant ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>{activeExam.is_rtl ? 'در حال تحلیل...' : 'Generating Draft...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-pink-200" />
+                    <span>
+                      {activeExam.is_rtl
+                        ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر AI)'
+                        : 'Generate AI-Resistant Questions'}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <button
                 onClick={() => setShowExportModal(true)}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5"
               >
@@ -1267,6 +1382,21 @@ export function ExamWorkspace({
               </button>
             </div>
           </div>
+
+          {/* AI-Resistant Notification Banners */}
+          {aiResistantSuccessMessage && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-center gap-2 shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{aiResistantSuccessMessage}</span>
+            </div>
+          )}
+
+          {aiResistantError && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-center gap-2 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{aiResistantError}</span>
+            </div>
+          )}
 
           {/* Conditional View: Academic Paper Preview vs Interactive Editor */}
           {workspaceView === 'preview' ? (
@@ -1282,6 +1412,12 @@ export function ExamWorkspace({
                 let url = `/api/exams/${activeExam.id}/export/${format}?target=${target}&include_references=true`;
                 if (currentGroupId) {
                   url += `&group_id=${currentGroupId}`;
+                }
+                const token = getAuthToken();
+                if (token) {
+                  url += `&token=${encodeURIComponent(token)}`;
+                } else {
+                  url += `&session_id=${encodeURIComponent(getGuestSessionId())}`;
                 }
                 window.location.href = url;
               }}
@@ -2026,6 +2162,18 @@ export function ExamWorkspace({
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI-Resistant Question Review & Confirmation Modal */}
+      {showAiResistantModal && activeExam && aiResistantDraft && (
+        <AiResistantReviewModal
+          isOpen={showAiResistantModal}
+          onClose={() => setShowAiResistantModal(false)}
+          onApply={handleApplyAiResistant}
+          currentExam={activeExam}
+          draftGroups={aiResistantDraft.draft_groups || []}
+          isApplying={isApplyingAiResistant}
+        />
       )}
     </div>
   );

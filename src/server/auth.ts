@@ -146,12 +146,14 @@ export function authenticateUserOrGuest(req: Request, res: Response, next: NextF
             isGuest: false,
             user,
           };
+        } else {
+          res.status(401).json({ detail: 'Session expired or user account not found. Please log in again.' });
+          return;
         }
       } else {
-        // Token was provided but is invalid or expired
-        if (guestHeader || queryGuestId) {
-          authContext.sessionId = guestHeader.trim() || queryGuestId.trim();
-        }
+        // Explicit teacher token was provided but is invalid, expired, or has a stale token_version
+        res.status(401).json({ detail: 'Session expired or invalid token. Please log in again.' });
+        return;
       }
     }
   } else if (authHeader && authHeader.startsWith('Guest ')) {

@@ -137,13 +137,19 @@ export async function parseDocxBuffer(fileBuffer: Buffer, filename: string): Pro
   const chaptersSet: string[] = [];
   let fullText = '';
 
+  const sampleDocText = (mammothText || docXml || '').slice(0, 4000);
+  const sampleHasRtl = /[\u0600-\u06FF]/.test(sampleDocText);
+  const initialDefaultChapter = sampleHasRtl
+    ? 'فصل اول: مقدمه و مفاهیم اساسی'
+    : 'Chapter 1: Overview and Core Concepts';
+
   if (docXml) {
     // Extract paragraphs and explicit page breaks from word/document.xml
     const pMatches = docXml.match(/<w:p(?:\s+[^>]*)?>[\s\S]*?<\/w:p>/g) || [];
 
     const hasExplicitPageBreaks = /<w:br\s+[^>]*w:type="page"|<w:lastRenderedPageBreak/i.test(docXml);
 
-    let currentChapter = 'فصل اول: مقدمه و مفاهیم اساسی';
+    let currentChapter = initialDefaultChapter;
     let currentSection = '';
     let currentPageNum = 1;
     let currentPageParagraphs: string[] = [];
@@ -231,7 +237,7 @@ export async function parseDocxBuffer(fileBuffer: Buffer, filename: string): Pro
 
     const approxParasPerPage = Math.max(1, Math.ceil(paragraphs.length / Math.max(1, Math.ceil(rawFallback.length / 2000))));
     let pNum = 1;
-    let curChapter = 'فصل اول: مفاهیم اصلی';
+    let curChapter = sampleHasRtl ? 'فصل اول: مفاهیم اصلی' : 'Chapter 1: Overview and Core Concepts';
 
     for (let idx = 0; idx < paragraphs.length; idx += approxParasPerPage) {
       const slice = paragraphs.slice(idx, idx + approxParasPerPage);
@@ -256,8 +262,26 @@ export async function parseDocxBuffer(fileBuffer: Buffer, filename: string): Pro
   // Detect language and direction
   const { language, isRtl } = detectLanguageAndDirection(fullText);
 
+  // If detected language is English (or non-RTL), purge any leftover Persian default chapter labels
+  if (!isRtl) {
+    const persianChapterPattern = /[\u0600-\u06FF]/;
+    for (const p of pages) {
+      if (p.chapter && persianChapterPattern.test(p.chapter || '')) {
+        p.chapter = 'Chapter 1: Overview and Core Concepts';
+      }
+      if (p.section && persianChapterPattern.test(p.section || '')) {
+        p.section = p.chapter;
+      }
+    }
+    for (let i = 0; i < chaptersSet.length; i++) {
+      if (persianChapterPattern.test(chaptersSet[i] || '')) {
+        chaptersSet[i] = 'Chapter 1: Overview and Core Concepts';
+      }
+    }
+  }
+
   if (chaptersSet.length === 0 && pages.length > 0) {
-    chaptersSet.push(pages[0].chapter || (isRtl ? 'فصل اول' : 'Chapter 1'));
+    chaptersSet.push(pages[0].chapter || (isRtl ? 'فصل اول' : 'Chapter 1: Overview and Core Concepts'));
   }
 
   return {

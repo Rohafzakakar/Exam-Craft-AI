@@ -118,6 +118,7 @@ class ExamCraftDatabase {
     this.initDatabase();
     this.runMigrations();
     this.seedInitialDataIfEmpty();
+    this.ensureInitialBackupAfterSeeding();
   }
 
   private initDirectoriesAndBackup(): void {
@@ -130,29 +131,51 @@ class ExamCraftDatabase {
 
     // Automated rolling backup if database exists
     if (fs.existsSync(DB_PATH)) {
-      try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupFile = path.resolve(BACKUPS_DIR, `examcraft_backup_${timestamp}.db`);
-        fs.copyFileSync(DB_PATH, backupFile);
+      this.createRollingBackup();
+    }
+  }
 
-        // Keep only the last 5 backups
-        const existingBackups = fs
-          .readdirSync(BACKUPS_DIR)
-          .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'))
-          .sort();
-        if (existingBackups.length > 5) {
-          const toDelete = existingBackups.slice(0, existingBackups.length - 5);
-          for (const file of toDelete) {
-            try {
-              fs.unlinkSync(path.resolve(BACKUPS_DIR, file));
-            } catch {
-              // Ignore unlink errors
-            }
+  public createRollingBackup(): string | null {
+    if (!fs.existsSync(DB_PATH)) return null;
+    try {
+      if (!fs.existsSync(BACKUPS_DIR)) {
+        fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFile = path.resolve(BACKUPS_DIR, `examcraft_backup_${timestamp}.db`);
+      fs.copyFileSync(DB_PATH, backupFile);
+
+      // Keep only the last 5 backups
+      const existingBackups = fs
+        .readdirSync(BACKUPS_DIR)
+        .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'))
+        .sort();
+      if (existingBackups.length > 5) {
+        const toDelete = existingBackups.slice(0, existingBackups.length - 5);
+        for (const file of toDelete) {
+          try {
+            fs.unlinkSync(path.resolve(BACKUPS_DIR, file));
+          } catch {
+            // Ignore unlink errors
           }
         }
-      } catch (err: any) {
-        console.warn('Backup warning (proceeding with startup):', err?.message);
       }
+      return backupFile;
+    } catch (err: any) {
+      console.warn('Backup warning (proceeding with startup):', err?.message);
+      return null;
+    }
+  }
+
+  private ensureInitialBackupAfterSeeding(): void {
+    if (!fs.existsSync(BACKUPS_DIR)) {
+      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    }
+    const existingBackups = fs
+      .readdirSync(BACKUPS_DIR)
+      .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'));
+    if (existingBackups.length === 0 && fs.existsSync(DB_PATH)) {
+      this.createRollingBackup();
     }
   }
 
@@ -823,11 +846,11 @@ class ExamCraftDatabase {
       rows = stmt.all(userId) as any[];
     } else if (sessionId) {
       stmt = this.db.prepare(
-        "SELECT * FROM documents WHERE session_id = ? OR session_id = 'default' ORDER BY created_at DESC"
+        "SELECT * FROM documents WHERE user_id IS NULL AND (session_id = ? OR session_id = 'default') ORDER BY created_at DESC"
       );
       rows = stmt.all(sessionId) as any[];
     } else {
-      stmt = this.db.prepare("SELECT * FROM documents WHERE session_id = 'default' ORDER BY created_at DESC");
+      stmt = this.db.prepare("SELECT * FROM documents WHERE user_id IS NULL AND session_id = 'default' ORDER BY created_at DESC");
       rows = stmt.all() as any[];
     }
 
@@ -1035,11 +1058,11 @@ class ExamCraftDatabase {
       rows = stmt.all(userId) as any[];
     } else if (sessionId) {
       stmt = this.db.prepare(
-        "SELECT id FROM exams WHERE session_id = ? OR session_id = 'default' ORDER BY created_at DESC"
+        "SELECT id FROM exams WHERE user_id IS NULL AND (session_id = ? OR session_id = 'default') ORDER BY created_at DESC"
       );
       rows = stmt.all(sessionId) as any[];
     } else {
-      stmt = this.db.prepare("SELECT id FROM exams WHERE session_id = 'default' ORDER BY created_at DESC");
+      stmt = this.db.prepare("SELECT id FROM exams WHERE user_id IS NULL AND session_id = 'default' ORDER BY created_at DESC");
       rows = stmt.all() as any[];
     }
 
@@ -1252,6 +1275,76 @@ class ExamCraftDatabase {
       transferredDocuments: docRes.changes || 0,
       transferredExams: examRes.changes || 0,
     };
+  }
+
+  public replaceExamGroupsAndQuestions(
+    examId: string,
+    groups: ExamGroupRecord[],
+    totalMarks?: number
+  ): ExamRecord | null {
+    const existing = this.getExamById(examId);
+    if (!existing) return null;
+
+    // Delete existing questions and groups for this exam
+    this.db.prepare('DELETE FROM exam_questions WHERE exam_id = ?').run(examId);
+    this.db.prepare('DELETE FROM exam_groups WHERE exam_id = ?').run(examId);
+
+    const groupStmt = this.db.prepare(`
+      INSERT INTO exam_groups (id, exam_id, group_name, group_order, questions_count)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const qStmt = this.db.prepare(`
+      INSERT INTO exam_questions (
+        id, exam_id, group_id, question_order, question_type,
+        question_text, options_json, correct_answer, explanation,
+        marks, difficulty, bloom_level,
+        source_document_name, source_page, source_chapter, source_section,
+        source_chunk_id, source_evidence, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let totalQs = 0;
+    for (const group of groups) {
+      groupStmt.run(group.id, examId, group.group_name, group.group_order, group.questions.length);
+      totalQs += group.questions.length;
+      for (const q of group.questions) {
+        qStmt.run(
+          q.id,
+          examId,
+          group.id,
+          q.question_order,
+          q.question_type,
+          q.question_text,
+          q.options ? JSON.stringify(q.options) : null,
+          q.correct_answer,
+          q.explanation || null,
+          q.marks,
+          q.difficulty,
+          q.bloom_level,
+          q.source_document_name,
+          q.source_page,
+          q.source_chapter || null,
+          q.source_section || null,
+          q.source_chunk_id || null,
+          q.source_evidence,
+          q.created_at || new Date().toISOString(),
+          new Date().toISOString()
+        );
+      }
+    }
+
+    const calculatedTotalMarks = totalMarks !== undefined
+      ? totalMarks
+      : (groups[0]?.questions.reduce((sum, q) => sum + q.marks, 0) || existing.total_marks);
+
+    this.db.prepare(`
+      UPDATE exams
+      SET groups_count = ?, questions_count = ?, total_marks = ?, updated_at = ?
+      WHERE id = ?
+    `).run(groups.length, totalQs, calculatedTotalMarks, new Date().toISOString(), examId);
+
+    return this.getExamById(examId);
   }
 }
 
