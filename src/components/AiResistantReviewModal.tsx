@@ -272,12 +272,12 @@ export function AiResistantReviewModal({
         </div>
 
         {/* Action Buttons Footer */}
-        <div className="px-6 py-4 bg-white border-t border-stone-200 flex items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-white border-t border-stone-200 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={isApplying}
-            className="px-4 py-2 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer transition-all"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer transition-all text-center"
           >
             {isRtl ? 'انصراف و حفظ سوالات فعلی' : 'Cancel & Keep Current Questions'}
           </button>
@@ -286,7 +286,7 @@ export function AiResistantReviewModal({
             type="button"
             onClick={handleApplyClick}
             disabled={isApplying}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white text-xs font-bold shadow-md cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white text-xs font-bold shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px]"
           >
             {isApplying ? (
               <>

@@ -209,6 +209,97 @@ export function extractPersianEducationalTopic(sentence: string, chunk: Document
   return null;
 }
 
+export function cleanLeadingPashtoDiscourseMarkers(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  const markerPattern = /^(همدارنګه|همداراز|دغه راز|له همدې امله|په حقیقت کې|په پایله کې|په دې توګه|له بلې خوا|په عمومي توګه|باید وویل شي چې|د یادونې وړ ده چې|د یادولو وړ ده چې|په ورته وخت کې|په همدې اساس|د متن له مخې|د منبع پر بنسټ|په دې لړ کې|په هر صورت|په لنډه توګه|سربېره پر دې|سره له دې|له دې امله)[،,\s]+/i;
+  let prev = '';
+  while (cleaned !== prev && markerPattern.test(cleaned)) {
+    prev = cleaned;
+    cleaned = cleaned.replace(markerPattern, '').trim();
+  }
+  return cleaned;
+}
+
+export function extractPashtoEducationalTopic(sentence: string, chunk: DocumentChunkRecord): string | null {
+  const stripped = cleanLeadingPashtoDiscourseMarkers(sentence);
+  if (!stripped || stripped.length < 10) {
+    return null;
+  }
+
+  // 1. Quoted terms take precedence: «...» or "..."
+  const quoteMatch = stripped.match(/[«"']([^»"']{3,50})[»"']/);
+  if (quoteMatch) {
+    const candidate = quoteMatch[1].trim();
+    if (candidate.length >= 3 && !/^(همدارنګه|دغه راز|له همدې امله|په حقیقت کې)$/.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  // 2. Pashto postposition / preposition patterns: "د [موضوع] په اړه / هکله / باب / تړاو"
+  const ppMatch = stripped.match(/د\s+([^،؛,.:]{3,45}?)\s+په\s+(اړه|هکله|باب|تړاو)/i);
+  if (ppMatch && ppMatch[1]) {
+    const candidate = cleanLeadingPashtoDiscourseMarkers(ppMatch[1].trim());
+    if (candidate.length >= 4) {
+      return candidate;
+    }
+  }
+
+  // 3. Extract substantive clause
+  const clauses = stripped
+    .split(/[،؛,.:]/)
+    .map((c) => cleanLeadingPashtoDiscourseMarkers(c.trim()))
+    .filter((c) => c.length >= 6);
+
+  const isInvalidPashtoFragment = (c: string) => {
+    const trimmed = c.trim();
+    if (trimmed.length < 4) return true;
+    if (
+      /^(همدارنګه|دغه راز|له همدې امله|په حقیقت کې|په پایله کې|په دې توګه|له بلې خوا|په عمومي توګه|د بېلګې په توګه|د بېلګې په ډول|د څېړنو له مخې|د یادونې وړ ده)$/.test(
+        trimmed
+      )
+    ) {
+      return true;
+    }
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (words.length === 1 && words[0].length < 4) return true;
+    return false;
+  };
+
+  for (const clause of clauses) {
+    if (!isInvalidPashtoFragment(clause)) {
+      let topic = clause;
+      if (topic.length > 55) {
+        const lastSpace = topic.lastIndexOf(' ', 50);
+        topic = lastSpace > 20 ? topic.slice(0, lastSpace).trim() : topic.slice(0, 50).trim();
+      }
+      topic = topic.replace(/[,;:—\-\s]+$/, '');
+      if (topic.length >= 4 && !isInvalidPashtoFragment(topic)) {
+        return topic;
+      }
+    }
+  }
+
+  // 4. Fallback to chunk.section or chunk.chapter if meaningful and educational
+  if (
+    chunk.section &&
+    chunk.section.length >= 4 &&
+    !/^Page\s+\d+/i.test(chunk.section) &&
+    !/^\d+$/i.test(chunk.section)
+  ) {
+    return chunk.section.trim();
+  }
+  if (
+    chunk.chapter &&
+    chunk.chapter.length >= 4 &&
+    !/^(Page\s+\d+|General Section)/i.test(chunk.chapter)
+  ) {
+    return chunk.chapter.trim();
+  }
+
+  return null;
+}
+
 /**
  * Detects administrative headers, attribution lines, PREPARED BY lines,
  * table of contents entries, dot leaders, and navigational metadata.
@@ -234,6 +325,10 @@ export function isDocumentMetadataOrNav(text: string): boolean {
     return true;
   }
   if (/^(تهیه\s*کننده|استاد\s*راهنما|ارائه\s*دهنده|نویسنده|مؤلف|دانشگاه|دانشکده|دیپارتمنت|رشته|مضمون|صنف|سال\s*تحصیلی|شماره\s*دانشجویی|درباره\s*نویسنده|زندگی‌نامه)\b/i.test(trimmed)) {
+    return true;
+  }
+  // Pashto administrative and attribution markers
+  if (/^(ترتیب\s*کوونکی|لارښود\s*استاد|وړاندې\s*کوونکی|لیکوال|مؤلف|پوهنتون|پوهنځی|دیپارتمنت|څانګه|مضمون|ټولګی|تعليمي\s*کال|د\s*زده‌کوونکي\s*نوم|د\s*لیکوال\s*په\s*اړه|ژوندلیک)\b/i.test(trimmed)) {
     return true;
   }
   if (/\b(Hamza Safi|Madina Kakar)\b/i.test(trimmed)) {
@@ -435,13 +530,14 @@ export function isHeadingOrFragment(text: string): boolean {
 
   // Unpunctuated lines (does not end in . ! ? ؛ or ۔)
   if (!/[.!?؛۔]$/.test(trimmed)) {
-    const isPersian = /[\u0600-\u06FF]/.test(trimmed);
-    if (isPersian) {
-      // For Persian / Dari, check word count and Persian verbal endings
+    const isRtlScript = /[\u0600-\u06FF]/.test(trimmed);
+    if (isRtlScript) {
+      // For RTL scripts (Pashto, Dari/Persian, Arabic, Urdu), check word count and finite verbal endings
       const words = trimmed.split(/\s+/).filter(Boolean);
       if (words.length <= 4) return true;
       const hasPersianVerb = /(می‌گردد|می‌شود|می‌باشد|است|هستند|شد|بود|گردید|دارد|می‌کند|می‌ورزد|می‌نماید|می‌بخشد|می‌سازد|می‌آورد|یافت|گرفت|می‌رود|می‌تواند|باشد)\s*$/i.test(trimmed);
-      if (words.length <= 6 && !hasPersianVerb) return true;
+      const hasPashtoVerb = /(دي|ده|دی|شوی|شوه|شول|کوي|کړي|شو|ګرځي|لري|راځي|کیږي|شي|وي|وو|وه|شته|ورکوي|شوي دي|کړی دی|شوي وي|ورسېد|جوړ کړ)\s*$/i.test(trimmed);
+      if (words.length <= 6 && !hasPersianVerb && !hasPashtoVerb) return true;
     } else {
       // Lines with <= 8 words without punctuation are headings / fragments
       const words = trimmed.split(/\s+/).filter(Boolean);
@@ -830,6 +926,61 @@ export function formatConcisePersianOption(sentence: string, subjectTopic?: stri
 }
 
 /**
+ * Formats a Pashto educational sentence or clause into a concise, parallel,
+ * academically appropriate option choice (typically 35–85 characters), avoiding
+ * copying entire long source paragraphs.
+ */
+export function formatConcisePashtoOption(sentence: string, subjectTopic?: string): string {
+  if (!sentence) return '';
+  let cleaned = cleanLeadingPashtoDiscourseMarkers(sentence).trim();
+
+  // If sentence has leading quotation marks or topic reference
+  if (subjectTopic) {
+    const normTopic = subjectTopic.replace(/[«»"']/g, '').trim();
+    if (normTopic.length >= 3) {
+      const topicPattern = new RegExp(`^(${normTopic}|«${normTopic}»)[،,\\s]+(چې|په توګه|عبارت دی له|یو له)?[،,\\s]*`, 'i');
+      if (topicPattern.test(cleaned)) {
+        cleaned = cleaned.replace(topicPattern, '').trim();
+      }
+    }
+  }
+
+  // Remove leading generic connectors
+  cleaned = cleaned.replace(/^(چې|له همدې امله|په حقیقت کې|په دې توګه|دغه راز|همدارنګه)\s+/i, '').trim();
+
+  // If sentence contains "چې ...", the substantive predicate often follows
+  if (cleaned.includes('چې ') && cleaned.length > 70) {
+    const after = cleaned.split('چې ')[1]?.trim();
+    if (after && after.length >= 25 && after.length <= 90) {
+      cleaned = after;
+    }
+  }
+
+  // If sentence is compound with "،" and too long (> 90 chars), pick the primary substantive clause
+  if (cleaned.length > 90 && cleaned.includes('،')) {
+    const clauses = cleaned.split(/[،؛]/).map((c) => c.trim()).filter((c) => c.length >= 25);
+    if (clauses.length > 0 && clauses[0].length <= 85) {
+      cleaned = clauses[0];
+    } else if (clauses.length > 1 && clauses[1].length <= 85) {
+      cleaned = clauses[1];
+    }
+  }
+
+  // Clean trailing punctuation and trailing connectors
+  cleaned = cleaned.replace(/[,;:—\-\s]+$/, '').trim();
+  cleaned = cleaned.replace(/\s+(چې|او|یا|خو|ځکه|نو)$/i, '').trim();
+  cleaned = cleaned.replace(/[.!?؛۔]$/, '').trim();
+
+  // Final length sanity guard: if still > 95 characters, trim at last word boundary
+  if (cleaned.length > 95) {
+    const cut = cleaned.lastIndexOf(' ', 90);
+    cleaned = cut > 35 ? cleaned.slice(0, cut).trim() : cleaned.slice(0, 90).trim();
+  }
+
+  return cleaned;
+}
+
+/**
  * Concept-specific distractors catalog for recognized academic and civic concepts.
  * Each entry provides plausible, demonstrably contrasting or incorrect propositions
  * that directly challenge student understanding of the specific concept.
@@ -1051,6 +1202,158 @@ export function generateConceptSpecificPersianDistractors(
 
   // Tier 3: If source does not provide enough distinct evidence to create valid distractors,
   // safely reject candidate rather than fabricating content (Requirement 6).
+  return null;
+}
+
+/**
+ * Concept-specific distractors catalog for recognized academic, civic, and technological concepts in Pashto.
+ * Each entry provides plausible, demonstrably contrasting or incorrect propositions in natural Pashto.
+ */
+export const PASHTO_CONCEPT_DISTRACTORS: Array<{
+  keywords: string[];
+  distractors: string[];
+}> = [
+  {
+    keywords: ['پکن', 'ښځو', 'حقوق', 'برابري', 'تبعیض'],
+    distractors: [
+      'په سیمه‌ییزه کچه د ښځو د حقوقو د څارنې د نړیوالو میکانیزمونو ځنډول',
+      'د ښځو مدني او ټولنیز فعالیتونه یوازې د کورنۍ تر کچې پورې محدودول',
+      'د دولتي ادارو په چوکاټ کې د ښځو کاري فرصتونه کمول او جلاوالی رامنځته کول',
+      'د ښوونیزو پروګرامونو پر ځای دودیزو لیدلورو ته لومړیتوب ورکول',
+    ],
+  },
+  {
+    keywords: ['ډیموکراسي', 'ولسواکي', 'ټولټاکنې', 'انتخابات', 'پارلمان', 'قانون', 'حاکمیت'],
+    distractors: [
+      'د قانون د حاکمیت پر ځای د شخصي او سلیقوي پرېکړو واکمني پیاوړې کول',
+      'د درې‌ګونو قواوو د جلاوالي له منځه وړل او د واک مطلق انحصار رامنځته کول',
+      'په ټولنیزو او سیاسي پرېکړو کې د عامه وګړو د فعال ګډون مخنیوی',
+      'د قضائیه قوې د خپلواکۍ محدودول او د سیاسي جوړښتونو تابع کول',
+    ],
+  },
+  {
+    keywords: ['اوبه', 'ساتنه', 'سمارټ', 'سینسر', 'شبکه', 'لګښت'],
+    distractors: [
+      'د لاسي نظارت په موخه د ډیجیټلي او سمارټ شبکو بشپړ بندول',
+      'د اوبو د ضایعاتو د مخنیوي لپاره د اتومات والونو د کارونې لغوه کول',
+      'د معلوماتو د راټولولو کچه کمول او دودیزو اټکلونو ته رجوع کول',
+      'د ځمکې لاندې سرچینو د مصرف په کنټرول کې د معاصرو تګلارو نه پلي کول',
+    ],
+  },
+  {
+    keywords: ['روغتیا', 'تعلیم', 'پوهنه', 'زده کړه', 'ښوونه'],
+    distractors: [
+      'د علمي څېړنو پر ځای د غیرتخصصي سرچینو پر پایلو تکیه کول',
+      'د ټولګیو په کچه د نوښتګرو میتودونو مخنیوی او د پخوانیو ناسمونو دوام',
+      'د ښوونیزو معیارونو راټیټول او د کیفیت ارزونې پروسه درول',
+      'د علمي بنسټونو ترمنځ د مسلکي همغږۍ کمزوري کول',
+    ],
+  },
+  {
+    keywords: ['اقتصاد', 'پراختیا', 'بودیجه', 'پرمختګ', 'مالي'],
+    distractors: [
+      'د عامه بودیجې د لګښتونو د روڼتیا او څارنې پروسه محدودول',
+      'د اوږدمهاله اقتصادي پرمختیايي پروژو د تمویل درول',
+      'د کورنیو تولیداتو د حمایوي تګلارو لغوه کول او د وارداتو زیاتوالی',
+      'په خصوصي سکټور کې د نوښتونو او پانګونې د کچې راټیټول',
+    ],
+  },
+];
+
+/**
+ * Generates 3 concept-specific, concise, parallel, and distinct distractors in Pashto.
+ * Checks against usedOptions to avoid reusing the same option set across questions.
+ * Returns null if insufficient distinct evidence is available.
+ */
+export function generateConceptSpecificPashtoDistractors(
+  sentence: string,
+  subjectTopic: string,
+  allChunks: DocumentChunkRecord[],
+  currentChunkId: string,
+  seqIndex: number,
+  variantIndex: number,
+  usedOptions: Set<string>,
+  cleanAnswer: string
+): string[] | null {
+  const normSent = (sentence || '').toLowerCase();
+  const normTopic = (subjectTopic || '').toLowerCase();
+  const normAns = (cleanAnswer || '')
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Tier 1: Check Pashto concept catalog
+  for (const entry of PASHTO_CONCEPT_DISTRACTORS) {
+    const matches = entry.keywords.some(
+      (kw) => normTopic.includes(kw.toLowerCase()) || normSent.includes(kw.toLowerCase())
+    );
+    if (matches) {
+      const candidates = entry.distractors.filter((d) => {
+        const normD = d
+          .toLowerCase()
+          .replace(/[\u064B-\u065F\u0670]/g, '')
+          .replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (normD === normAns) return false;
+        if (usedOptions.has(normD)) return false;
+        return true;
+      });
+
+      if (candidates.length >= 3) {
+        return candidates.slice(0, 3);
+      }
+    }
+  }
+
+  // Tier 2: Extract distinct concise propositions from OTHER chunks in document
+  const extractedCandidates: string[] = [];
+  const seenNorm = new Set<string>();
+
+  const chunksCount = (allChunks && allChunks.length) || 1;
+  const chunkOffset = ((seqIndex + 1) * 2 + variantIndex) % chunksCount;
+
+  for (let i = 0; i < chunksCount; i++) {
+    const cIdx = (chunkOffset + i) % chunksCount;
+    const chunk = allChunks[cIdx];
+    if (!chunk || chunk.id === currentChunkId) continue;
+
+    const raw = (chunk.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const sents = raw.split(/[.؟!؛۔\n]+/).map((s) => s.trim()).filter((s) => s.length >= 25);
+
+    for (const s of sents) {
+      if (s.endsWith('؟') || s.endsWith('?')) continue;
+      const concise = formatConcisePashtoOption(s);
+      if (concise.length < 25 || concise.length > 90) continue;
+
+      const normC = concise
+        .toLowerCase()
+        .replace(/[\u064B-\u065F\u0670]/g, '')
+        .replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (normC === normAns) continue;
+      if (seenNorm.has(normC)) continue;
+      if (usedOptions.has(normC)) continue;
+
+      seenNorm.add(normC);
+      extractedCandidates.push(concise);
+      if (extractedCandidates.length >= 3) {
+        break;
+      }
+    }
+
+    if (extractedCandidates.length >= 3) {
+      break;
+    }
+  }
+
+  if (extractedCandidates.length >= 3) {
+    return extractedCandidates.slice(0, 3);
+  }
+
   return null;
 }
 
@@ -1619,10 +1922,25 @@ export function extractTopicRelevantDistractors(
 
   const cleanCurrent = sanitizeEducationalText(currentSentence);
   const cleanAnswer = cleanCurrent.replace(/[,;:—\-\s.]+$/, '') + '.';
-  const isPersian = doc.detected_language === 'fa' || doc.detected_language === 'ar' || Boolean(doc.is_rtl);
+  const isPashto = doc.detected_language === 'ps';
+  const isPersian = doc.detected_language === 'fa' || doc.detected_language === 'ar' || (Boolean(doc.is_rtl) && !isPashto);
 
   // --- TIER 1: CONCEPT-SPECIFIC TOPIC-COHERENT DISTRACTORS ---
-  if (isPersian) {
+  if (isPashto) {
+    const pashtoDistractors = generateConceptSpecificPashtoDistractors(
+      cleanCurrent,
+      subjectTopic || '',
+      doc.chunks || [],
+      '',
+      seqIndex,
+      variantIndex,
+      usedOptions,
+      cleanAnswer
+    );
+    if (pashtoDistractors && pashtoDistractors.length >= 3) {
+      return pashtoDistractors.slice(0, 3);
+    }
+  } else if (isPersian) {
     const persianDistractors = generateConceptSpecificPersianDistractors(
       cleanCurrent,
       subjectTopic || '',
@@ -1661,7 +1979,7 @@ export function extractTopicRelevantDistractors(
   const seenCandidates = new Set<string>();
 
   for (const c of doc.chunks || []) {
-    const sents = extractCleanSubstantiveSentences(c.content, isPersian);
+    const sents = extractCleanSubstantiveSentences(c.content, isPersian || isPashto);
 
     for (const s of sents) {
       if (s.endsWith('?') || /^Why\b/i.test(s) || isHeadingOrFragment(s) || isDocumentMetadataOrNav(s)) continue;
@@ -1681,10 +1999,14 @@ export function extractTopicRelevantDistractors(
         const tokens = getQuestionTokens(s);
         const sim = computeJaccardSimilarity(currentTokens, tokens);
         if (sim < 0.65) {
-          let formatted = isPersian ? cleanLeadingPersianDiscourseMarkers(s) : s.trim();
+          let formatted = isPashto
+            ? formatConcisePashtoOption(s)
+            : isPersian
+            ? formatConcisePersianOption(s)
+            : s.trim();
           formatted = sanitizeEducationalText(formatted);
 
-          if (!isPersian && formatted.length > 165) {
+          if (!isPersian && !isPashto && formatted.length > 165) {
             continue;
           }
 
@@ -1738,5 +2060,472 @@ export function extractTopicRelevantDistractors(
   }
 
   return chosen.slice(0, 3);
+}
+
+/**
+ * Accurately detects the primary language of educational text or question stems.
+ */
+export function detectTextLanguage(text: string): 'ps' | 'fa' | 'en' | 'ar' | 'ur' | 'hi' | 'unknown' {
+  if (!text || !text.trim()) return 'unknown';
+  const trimmed = text.trim();
+
+  const latinCount = (trimmed.match(/[A-Za-z]/g) || []).length;
+  const arabicCount = (trimmed.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
+  const devanagariCount = (trimmed.match(/[\u0900-\u097F]/g) || []).length;
+
+  if (devanagariCount > 5 && devanagariCount > latinCount && devanagariCount > arabicCount) {
+    return 'hi';
+  }
+
+  if (latinCount > 10 && latinCount > arabicCount) {
+    return 'en';
+  }
+
+  if (arabicCount > 0) {
+    // Check Pashto distinct letters or distinctive grammar
+    if (
+      /[ښځڅډړږڼۍې]/.test(trimmed) ||
+      /\b(او|په|د|له|تر|سره|چې|کې|شوی|شوي|شوه|شول|دی|ده|دي|کوي|کړي|کیږي|لري|دغه|هغه|موږ|تاسو|دوی|څنګه|ولې|څه|کوم|سمه|ناسمه|ازموینه|پوښتنه|ځواب)\b/.test(trimmed)
+    ) {
+      return 'ps';
+    }
+    // Check Urdu distinct letters
+    if (
+      /[ٹڈڑںےہۂ]/.test(trimmed) ||
+      /\b(اور|میں|کی|کے|کو|سے|ہے|ہیں|تھا|تھی|تھے|گا|گے|گی)\b/.test(trimmed)
+    ) {
+      return 'ur';
+    }
+    // Check Arabic distinct words
+    if (/\b(في|على|من|إلى|عن|هذا|هذه|التي|الذي|أن|إن|صحيح|خطأ)\b/.test(trimmed)) {
+      return 'ar';
+    }
+    // Default RTL with Persian letters/verbs
+    return 'fa';
+  }
+
+  return 'en';
+}
+
+/**
+ * Validates that question stem, options, correct answer, and explanation
+ * strictly adhere to the expected examination language, rejecting cross-language contamination.
+ */
+export function validateQuestionLanguage(
+  question: {
+    question_type: string;
+    question_text: string;
+    options?: string[] | null;
+    correct_answer?: string;
+    explanation?: string;
+  },
+  expectedLang: string
+): { valid: boolean; reason?: string } {
+  const normLang = (expectedLang || 'en').toLowerCase();
+
+  // Distinct markers that MUST NOT appear in other languages:
+  // 1. Dari/Persian words that must NEVER appear in a Pashto exam:
+  const dariInPashtoForbidden = [
+    /\bمی‌شود\b/, /\bمی‌گردد\b/, /\bمی‌باشد\b/, /\bهستند\b/, /\bبر اساس\b/, /\bطبق متن\b/,
+    /\bصحیح یا غلط\b/, /\bجای خالی را با کلمه مناسب تکمیل نمایید\b/, /\bدر رابطه با\b/,
+    /\bکدام گزینه\b/, /\bکدام مورد\b/, /\bتبیین نمایید\b/, /\bارزیابی نمایید\b/,
+    /\bمعیار نمره‌دهی\b/, /\bبیان فرمایید\b/, /\bتشریح فرمایید\b/, /\bپیرامون\b/, /\bدر خصوص\b/
+  ];
+
+  // 2. Pashto words that must NEVER appear in a Dari/Persian exam:
+  const pashtoInDariForbidden = [
+    /[ښځڅډړږڼۍ]/, /\bسمه که ناسمه\b/, /\bخالي ځای په مناسبې کلمې سره ډک کړئ\b/,
+    /\bپه اړه\b/, /\bپه هکله\b/, /\bپه تړاو\b/, /\bکومه لاندینۍ غوراوی\b/,
+    /\bد نمرو ورکولو معیار\b/, /\bتشرېح کړئ\b/, /\bوڅېړئ\b/, /\bسمه\b/, /\bناسمه\b/
+  ];
+
+  const allTextsToCheck: string[] = [
+    question.question_text || '',
+    question.correct_answer || '',
+    question.explanation || '',
+    ...(question.options || [])
+  ];
+
+  if (normLang === 'ps') {
+    for (const t of allTextsToCheck) {
+      for (const pattern of dariInPashtoForbidden) {
+        if (pattern.test(t)) {
+          return { valid: false, reason: `Found Dari/Persian pattern in Pashto exam text: "${t.slice(0, 70)}..."` };
+        }
+      }
+    }
+    // Check True/False options for Pashto
+    if (question.question_type === 'true_false' && question.options) {
+      const opts = question.options.map((o) => o.trim());
+      if (!opts.includes('سمه') || !opts.includes('ناسمه')) {
+        return { valid: false, reason: `Pashto True/False must use ['سمه', 'ناسمه'], received: [${opts.join(', ')}]` };
+      }
+    }
+  } else if (normLang === 'fa') {
+    for (const t of allTextsToCheck) {
+      for (const pattern of pashtoInDariForbidden) {
+        if (pattern.test(t)) {
+          return { valid: false, reason: `Found Pashto pattern in Dari exam text: "${t.slice(0, 70)}..."` };
+        }
+      }
+    }
+    // Check True/False options for Dari
+    if (question.question_type === 'true_false' && question.options) {
+      const opts = question.options.map((o) => o.trim());
+      if (!opts.includes('صحیح') || !opts.includes('غلط')) {
+        return { valid: false, reason: `Dari True/False must use ['صحیح', 'غلط'], received: [${opts.join(', ')}]` };
+      }
+    }
+  } else if (normLang === 'en') {
+    for (const t of allTextsToCheck) {
+      if (/[\u0600-\u06FF]/.test(t)) {
+        return { valid: false, reason: `Found Arabic/Persian/Pashto script in English exam text: "${t.slice(0, 70)}..."` };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Comprehensive pre-display and pre-export academic quality and language validator.
+ */
+export function validateAcademicQuestion(
+  question: any,
+  expectedLang: string
+): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!question || typeof question !== 'object') {
+    return { isValid: false, errors: ['Question is null or not an object.'] };
+  }
+
+  // 1. Question text presence and length
+  const stem = String(question.question_text || '').trim();
+  if (stem.length < 15) {
+    errors.push(`Question text is too short (${stem.length} chars).`);
+  }
+  if (isHeadingOrFragment(stem)) {
+    errors.push('Question text is a heading, fragment, or incomplete sentence.');
+  }
+
+  // 2. Language purity
+  const langCheck = validateQuestionLanguage(question, expectedLang);
+  if (!langCheck.valid) {
+    errors.push(langCheck.reason || 'Failed language purity validation.');
+  }
+
+  // 3. Question type specifics
+  const qType = String(question.question_type || '').toLowerCase();
+  if (qType === 'mcq') {
+    if (!Array.isArray(question.options) || question.options.length !== 4) {
+      errors.push(`MCQ must have exactly 4 options, found ${question.options?.length || 0}.`);
+    } else {
+      const emptyOpt = question.options.some((o: string) => !o || String(o).trim().length < 2);
+      if (emptyOpt) {
+        errors.push('MCQ contains empty or invalid option choice.');
+      }
+      const uniqueOpts = new Set(question.options.map((o: string) => String(o).trim().toLowerCase()));
+      if (uniqueOpts.size < 4) {
+        errors.push('MCQ options contain duplicate choices.');
+      }
+      if (!question.correct_answer || !question.options.includes(question.correct_answer)) {
+        errors.push('MCQ correct_answer must match one of the four options exactly.');
+      }
+    }
+  } else if (qType === 'true_false') {
+    if (!Array.isArray(question.options) || question.options.length !== 2) {
+      errors.push('True/False question must have exactly 2 options.');
+    }
+    if (!question.correct_answer) {
+      errors.push('True/False question must specify a correct_answer.');
+    }
+  } else if (qType === 'fill_blank') {
+    if (!/\[_{3,}|\[blank\]|\[_____\]/.test(stem)) {
+      errors.push('Fill-in-the-blank question stem must contain a valid blank placeholder like [_____].');
+    }
+    if (!question.correct_answer || String(question.correct_answer).trim().length === 0) {
+      errors.push('Fill-in-the-blank question must specify the target blank answer.');
+    }
+  } else if (qType === 'short_answer' || qType === 'essay') {
+    if (!question.correct_answer || String(question.correct_answer).trim().length < 10) {
+      errors.push(`${qType} must have a substantive model answer (minimum 10 chars).`);
+    }
+    if (!question.explanation || String(question.explanation).trim().length < 10) {
+      errors.push(`${qType} must provide an explicit marking rubric in explanation.`);
+    }
+  }
+
+  // 4. Grounding verification
+  if (!question.source_evidence || String(question.source_evidence).trim().length < 15) {
+    errors.push('Question lacks valid source_evidence citation from the educational text.');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+export interface ExamLocalization {
+  isRtl: boolean;
+  trueFalsePrefix: string;
+  trueFalseOptions: [string, string];
+  fillBlankInstruction: string;
+  mcqStems: string[];
+  shortAnswerStems: string[];
+  essayStems: string[];
+  essayRubric: (page: number) => string;
+  shortAnswerRubric: (page: number) => string;
+  explanationPrefix: (page: number) => string;
+  studentNameLabel: string;
+  seatNoLabel: string;
+  dateLabel: string;
+  timeLabel: string;
+  maxMarksLabel: string;
+  variantLabel: string;
+  generalInstructionsTitle: string;
+  generalInstructionsList: string[];
+  questionsSectionTitle: (variant: string) => string;
+  paperEndNotice: (variant: string) => string;
+  answerKeyTitle: (variant: string) => string;
+  confidentialNotice: string;
+  subjectDefault: string;
+  titleFormat: (docTitle: string) => string;
+}
+
+export const EXAM_LOCALIZATIONS: Record<string, ExamLocalization> = {
+  ps: {
+    isRtl: true,
+    trueFalsePrefix: 'سمه که ناسمه',
+    trueFalseOptions: ['سمه', 'ناسمه'],
+    fillBlankInstruction: 'خالي ځای په مناسبې کلمې سره ډک کړئ: ',
+    mcqStems: [
+      'د «{topic}» په اړه، کومه لاندینۍ غوراوی سم مفهوم او معتبره پایله څرګندوي؟',
+      'کوم مورد د «{topic}» بنسټیز اصل یا اصلي دنده په سمه توګه بیانوي؟',
+      'د «{topic}» په تړاو، کومه جمله محوري مفهوم تشرېح کوي؟',
+      'کوم انتخاب د «{topic}» په هکله کره او دقیقه علمي شننه وړاندې کوي؟',
+    ],
+    shortAnswerStems: [
+      'د «{topic}» مهمې ځانګړنې او اساسي اړخونه په ۲ تر ۳ جملو کې تشرېح کړئ.',
+      'د «{topic}» اصلي اغېزې او عملي کارکړنې په لنډ ډول روښانه کړئ.',
+      'د «{topic}» مرکزي رول او بنسټیز ارزښت په لنډه توګه بیان کړئ.',
+      'د «{topic}» اړوند مهم ټکي او علمي موندنې ولیکئ.',
+    ],
+    essayStems: [
+      'د «{topic}» ستراتیژیک اړخونه، عملي خنډونه او د پلي کېدو لارې چارې په یوه تحلیلي مقاله کې په بشپړ ډول وڅېړئ.',
+      'د «{topic}» جوړښتي اغېزې او بنسټیزې پایلې په هر اړخیزه توګه ارزیابي او تحلیل کړئ.',
+      'د «{topic}» مفهومي او عملي اړخونه وڅېړئ او د پلي کېدو شرایط یې روښانه کړئ.',
+    ],
+    essayRubric: (page: number) =>
+      `د نمرو ورکولو معیار: ۱. د استدلال تسلسل او ژبنیز جوړښت (۱.۵ نمرې)، ۲. د ${page} مخ علمي مفاهیمو ته کره استناد (۲ نمرې)، ۳. د شننې او حل‌لارو روښانتیا (۱.۵ نمرې).`,
+    shortAnswerRubric: (page: number) =>
+      `د نمرو ورکولو معیار: ۱. متن ته د کره استناد روښانتیا (۱.۵ نمرې)، ۲. د مفهومي شننې دقت (۱.۵ نمرې). (${page} مخ)`,
+    explanationPrefix: (page: number) => `مستند د منبع متن ته (${page} مخ): `,
+    studentNameLabel: 'د زده‌کوونکي نوم:',
+    seatNoLabel: 'د څوکۍ / حاضري شمېره:',
+    dateLabel: 'نېټه:',
+    timeLabel: 'وخت:',
+    maxMarksLabel: 'ټولې نمرې:',
+    variantLabel: 'ګروپ:',
+    generalInstructionsTitle: 'د ازموینې عمومي لارښوونې:',
+    generalInstructionsList: [
+      'ډاډ ترلاسه کړئ چې دا د ازموینې پاڼه ستاسو د ګروپ ټولې پوښتنې لري.',
+      'ټول ځوابونه په اړوندو ځایونو کې په واضح ډول ولیکئ.',
+      'د پوښتنو له پیل مخکې خپل نوم او د حاضري شمېره په دقیقه توګه ولیکئ.',
+      'د ازموینې په جریان کې د هر ډول غیرقانوني وسایلو کارول منع دي.',
+    ],
+    questionsSectionTitle: (variant: string) => `د ازموینې پوښتنې (${variant})`,
+    paperEndNotice: (variant: string) => `--- د ازموینې د پاڼې پای (${variant}) ---`,
+    answerKeyTitle: (variant: string) => `د نمرو ورکولو محرم لارښود او د پوښتنو کلید (${variant})`,
+    confidentialNotice: 'محرم اسناد. د نمره‌ورکونې له بشپړېدو وړاندې زده‌کوونکو ته ورکول منع دي.',
+    subjectDefault: 'ښوونیز مضمون',
+    titleFormat: (docTitle: string) => `د ${docTitle} ازموینه`,
+  },
+  fa: {
+    isRtl: true,
+    trueFalsePrefix: 'صحیح یا غلط',
+    trueFalseOptions: ['صحیح', 'غلط'],
+    fillBlankInstruction: 'جای خالی را با کلمه مناسب تکمیل نمایید: ',
+    mcqStems: [
+      'در رابطه با «{topic}»، کدام گزینه بیانگر مفهوم و نتیجه‌گیری صحیح است؟',
+      'کدام مورد، اصل یا کارکرد اساسی «{topic}» را به درستی بیان می‌کند؟',
+      'در خصوص «{topic}»، کدام گزاره مفهوم محوری را به درستی تبیین می‌کند؟',
+      'کدام گزینه، تحلیل دقیق و معتبری در رابطه با «{topic}» ارائه می‌دهد؟',
+    ],
+    shortAnswerStems: [
+      'اهمیت و ابعاد کلیدی «{topic}» را در ۲ الی ۳ جمله تبیین نمایید.',
+      'پیامدها و کارکردهای اصلی «{topic}» را به صورت مختصر شرح دهید.',
+      'نقش و جایگاه محوری «{topic}» را به اختصار توضیح دهید.',
+      'ویژگی‌ها و نکات اساسی در رابطه با «{topic}» را بیان فرمایید.',
+    ],
+    essayStems: [
+      'ابعاد راهبردی، موانع اجرایی و راه‌کارهای تحقق «{topic}» را به تفصیل تحلیل و ارزیابی نمایید.',
+      'تأثیرات ساختاری و پیامدهای کلیدی «{topic}» را در یک مقاله تحلیلی جامع مورد بررسی قرار دهید.',
+      'ابعاد مفهومی و کاربردی «{topic}» را واکاوی نموده و الزامات اجرایی آن را تشریح فرمایید.',
+    ],
+    essayRubric: (page: number) =>
+      `معیار نمره‌دهی: ۱. انسجام استدلال (۱.۵ نمره)، ۲. استناد دقیق به مفاهیم صفحه ${page} (۲ نمره)، ۳. وضوح تحلیل و راه‌کارها (۱.۵ نمره).`,
+    shortAnswerRubric: (page: number) =>
+      `معیار نمره‌دهی: ۱. وضوح استناد به متن (۱.۵ نمره)، ۲. دقت تحلیل مفهومی (۱.۵ نمره). (صفحه ${page})`,
+    explanationPrefix: (page: number) => `مستند به متن منبع (صفحه ${page}): `,
+    studentNameLabel: 'نام محصل:',
+    seatNoLabel: 'شماره صندلی / حاضری:',
+    dateLabel: 'تاریخ:',
+    timeLabel: 'وقت:',
+    maxMarksLabel: 'مجموع نمرات:',
+    variantLabel: 'گروپ:',
+    generalInstructionsTitle: 'رهنمود عمومی امتحان:',
+    generalInstructionsList: [
+      'اطمینان حاصل نمایید که این ورقه امتحانی حاوی کلیه سوالات گروپ شما می‌باشد.',
+      'پاسخ‌های خود را با خط خوانا در محل‌های تعیین‌شده بنویسید.',
+      'مشخصات فردی خود را قبل از پاسخگویی به سوالات درج فرمایید.',
+      'استفاده از یادداشت‌ها، گوشی و هرگونه وسیله الکترونیکی غیرمجاز است.',
+    ],
+    questionsSectionTitle: (variant: string) => `سوالات امتحانی (${variant})`,
+    paperEndNotice: (variant: string) => `--- پایان ورقه امتحانی (${variant}) ---`,
+    answerKeyTitle: (variant: string) => `راهنمای نمره‌دهی و کلید سوالات (${variant})`,
+    confidentialNotice: 'سند کاملاً محرمانه امتحانی. قبل از اتمام کامل نمره‌دهی، از در اختیار قرار دادن آن به محصلین خودداری گردد.',
+    subjectDefault: 'محتوای آموزشی و تخصصی',
+    titleFormat: (docTitle: string) => `آزمون ${docTitle}`,
+  },
+  en: {
+    isRtl: false,
+    trueFalsePrefix: 'True or False',
+    trueFalseOptions: ['True', 'False'],
+    fillBlankInstruction: 'Complete the statement: ',
+    mcqStems: [
+      'Regarding "{topic}", which of the following accurately describes the key principle or function?',
+      'Which statement provides an accurate, verifiable conclusion concerning "{topic}"?',
+      'In the context of "{topic}", which option correctly identifies its primary operational role?',
+      'Which choice best characterizes the essential mechanism of "{topic}"?',
+    ],
+    shortAnswerStems: [
+      'Explain the key significance and core aspects of "{topic}" in 2 to 3 concise sentences.',
+      'Summarize the primary functions and operational implications of "{topic}".',
+      'Briefly outline the essential principles and academic importance of "{topic}".',
+      'Identify the critical features and analytical outcomes related to "{topic}".',
+    ],
+    essayStems: [
+      'Critically analyze the strategic dimensions, structural implications, and operational implementation of "{topic}".',
+      'Evaluate the comprehensive impact, operational challenges, and practical solutions associated with "{topic}".',
+      'Synthesize the fundamental theoretical principles and practical execution requirements of "{topic}".',
+    ],
+    essayRubric: (page: number) =>
+      `Grading Rubric: 1. Coherence of academic argument (1.5 pts), 2. Explicit citation of concepts from Page ${page} (2.0 pts), 3. Depth of analytical synthesis (1.5 pts).`,
+    shortAnswerRubric: (page: number) =>
+      `Grading Rubric: 1. Clarity of direct citation (1.5 pts), 2. Accuracy of conceptual explanation (1.5 pts). (Page ${page})`,
+    explanationPrefix: (page: number) => `Documented in source text (Page ${page}): `,
+    studentNameLabel: 'Student Name:',
+    seatNoLabel: 'Roll / Seat No:',
+    dateLabel: 'Date:',
+    timeLabel: 'Time:',
+    maxMarksLabel: 'Max Marks:',
+    variantLabel: 'Variant:',
+    generalInstructionsTitle: 'General Instructions:',
+    generalInstructionsList: [
+      'Check that this paper contains all questions for your designated examination group.',
+      'Write all answers clearly in the spaces provided below.',
+      'Ensure your name and seat number are properly recorded above.',
+      'Unauthorized devices, notes, or calculators are strictly prohibited.',
+    ],
+    questionsSectionTitle: (variant: string) => `EXAMINATION QUESTIONS (${variant})`,
+    paperEndNotice: (variant: string) => `--- END OF EXAMINATION (${variant}) ---`,
+    answerKeyTitle: (variant: string) => `TEACHER MARKING GUIDE & ANSWER KEY (${variant})`,
+    confidentialNotice: 'CONFIDENTIAL FACULTY DOCUMENT. Do not distribute to students prior to official grading completion.',
+    subjectDefault: 'Educational Subject Matter',
+    titleFormat: (docTitle: string) => `${docTitle} Examination`,
+  },
+  ar: {
+    isRtl: true,
+    trueFalsePrefix: 'صحيح أم خطأ',
+    trueFalseOptions: ['صحيح', 'خطأ'],
+    fillBlankInstruction: 'املأ الفراغ بالكلمة المناسبة: ',
+    mcqStems: [
+      'فيما يتعلق بـ «{topic}»، أي من الخيارات التالية يعبر بدقة عن المفهوم والاستنتاج الصحيح؟',
+      'أي خيار يوضح المبدأ الأساسي أو الوظيفة الجوهرية لـ «{topic}» بشكل سليم؟',
+      'في سياق «{topic}»، أي عبارة تشرح المفهوم المحوري بدقة؟',
+    ],
+    shortAnswerStems: [
+      'وضح الأبعاد الرئيسية والأهمية الجوهرية لـ «{topic}» في جملتين إلى ثلاث جمل موجزة.',
+      'اشرح باختصار الآثار والوظائف الأساسية المرتبطة بـ «{topic}».',
+    ],
+    essayStems: [
+      'حلل وقيم بشكل شامل الأبعاد الاستراتيجية والتحديات التطبيقية المتعلقة بـ «{topic}».',
+    ],
+    essayRubric: (page: number) =>
+      `معيار التصحيح: ١. ترابط الحجة الأكاديمية (١.٥ درجة)، ٢. الاستشهاد الدقيق بالمفاهيم في الصفحة ${page} (درجتان)، ٣. عمق التحليل والحلول (١.٥ درجة).`,
+    shortAnswerRubric: (page: number) =>
+      `معيار التصحيح: ١. وضوح الاستناد إلى النص (١.۵ درجة)، ۲. دقة الشرح المفاهيمي (۱.۵ درجة). (صفحة ${page})`,
+    explanationPrefix: (page: number) => `مستند إلى نص المصدر (صفحة ${page}): `,
+    studentNameLabel: 'اسم الطالب:',
+    seatNoLabel: 'رقم الجلوس:',
+    dateLabel: 'التاريخ:',
+    timeLabel: 'الوقت:',
+    maxMarksLabel: 'الدرجة الكلية:',
+    variantLabel: 'النموذج:',
+    generalInstructionsTitle: 'تعليمات عامة:',
+    generalInstructionsList: [
+      'تأكد من احتواء ورقة الامتحان على جميع الأسئلة المخصصة لنموذجك.',
+      'اكتب جميع الإجابات بوضوح في الأماكن المخصصة.',
+      'تأكد من كتابة اسمك ورقم جلوسك في الحقول المخصصة أعلاه.',
+      'يمنع منعاً باتاً استخدام أي مذكرات أو هواتف أو أجهزة غير مصرح بها.',
+    ],
+    questionsSectionTitle: (variant: string) => `أسئلة الامتحان (${variant})`,
+    paperEndNotice: (variant: string) => `--- نهاية ورقة الامتحان (${variant}) ---`,
+    answerKeyTitle: (variant: string) => `دليل التصحيح وسلم الدرجات (${variant})`,
+    confidentialNotice: 'وثيقة سرية خاصة بهيئة التدريس. يحظر توزيعها على الطلاب قبل الانتهاء التام من رصد الدرجات.',
+    subjectDefault: 'المادة التعليمية',
+    titleFormat: (docTitle: string) => `امتحان ${docTitle}`,
+  },
+  ur: {
+    isRtl: true,
+    trueFalsePrefix: 'درست یا غلط',
+    trueFalseOptions: ['درست', 'غلط'],
+    fillBlankInstruction: 'مناسب لفظ سے خالی جگہ پر کریں: ',
+    mcqStems: [
+      '«{topic}» کے حوالے سے، درج ذیل میں سے کون سا انتخاب درست تصور اور نتیجے کو واضح کرتا ہے؟',
+      'کون سی شق «{topic}» کے بنیادی اصول یا مرکزی عمل کو درست طور پر بیان کرتی ہے؟',
+    ],
+    shortAnswerStems: [
+      '«{topic}» کے اہم پہلوؤں اور بنیادی اہمیت کو ۲ سے ۳ مختصر جملوں میں واضح کریں۔',
+    ],
+    essayStems: [
+      '«{topic}» کے اسٹریٹجک ابعاد، عملی رکاوٹوں اور نفاذ کے طریقہ کار کا تفصیلی جائزہ لیں۔',
+    ],
+    essayRubric: (page: number) =>
+      `نمبروں کا معیار: ۱. استدلال کا تسلسل (۱.۵ نمبر)، ۲. صفحہ ${page} کے متن سے براہ راست استناد (۲ نمبر)، ۳. تجزیاتی گہرائی (۱.۵ نمبر)۔`,
+    shortAnswerRubric: (page: number) =>
+      `نمبروں کا معیار: ۱. متن کے حوالے کی وضاحت (۱.۵ نمبر)، ۲. تصوراتی وضاحت کی درستگی (۱.۵ نمبر)۔ (صفحہ ${page})`,
+    explanationPrefix: (page: number) => `بنیادی متن سے اخذ شدہ (صفحہ ${page}): `,
+    studentNameLabel: 'طالب علم کا نام:',
+    seatNoLabel: 'رول نمبر / نشست نمبر:',
+    dateLabel: 'تاریخ:',
+    timeLabel: 'وقت:',
+    maxMarksLabel: 'کل نمبر:',
+    variantLabel: 'گروپ:',
+    generalInstructionsTitle: 'عام ہدایات:',
+    generalInstructionsList: [
+      'یقینی بنائیں کہ امتحانی پرچے میں آپ کے گروپ کے تمام سوالات موجود ہیں۔',
+      'تمام جوابات فراہم کردہ جگہ پر واضح لکھیں۔',
+      'اپنا نام اور رول نمبر احتیاط سے درج کریں۔',
+      'غیر متعلقہ مواد یا موبائل کا استعمال سختی سے ممنوع ہے۔',
+    ],
+    questionsSectionTitle: (variant: string) => `امتحانی سوالات (${variant})`,
+    paperEndNotice: (variant: string) => `--- امتحانی پرچے کا اختتام (${variant}) ---`,
+    answerKeyTitle: (variant: string) => `مارکنگ گائیڈ اور جوابی پرچہ (${variant})`,
+    confidentialNotice: 'محرم دستاویز۔ نتائج کے باقاعدہ اعلان سے قبل طلبہ میں تقسیم کرنا ممنوع ہے۔',
+    subjectDefault: 'تعلیمی مضمون',
+    titleFormat: (docTitle: string) => `امتحان ${docTitle}`,
+  },
+};
+
+export function getExamLocalization(lang: string): ExamLocalization {
+  const norm = (lang || 'en').toLowerCase();
+  if (norm === 'ps' || norm.startsWith('ps')) return EXAM_LOCALIZATIONS.ps;
+  if (norm === 'fa' || norm === 'prs' || norm.startsWith('fa')) return EXAM_LOCALIZATIONS.fa;
+  if (norm === 'ar' || norm.startsWith('ar')) return EXAM_LOCALIZATIONS.ar;
+  if (norm === 'ur' || norm.startsWith('ur')) return EXAM_LOCALIZATIONS.ur;
+  return EXAM_LOCALIZATIONS.en;
 }
 

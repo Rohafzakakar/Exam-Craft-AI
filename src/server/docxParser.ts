@@ -80,8 +80,8 @@ export function detectLanguageAndDirection(text: string): { language: string; is
 
   const rtlRatio = arabicCount / totalLetters;
   if (rtlRatio > 0.25) {
-    // Specific script markers (Pashto distinct letters)
-    if (/[ښځڅډړږڼۍ]/.test(text)) {
+    // Specific script markers and grammatical markers (Pashto distinct letters and function words)
+    if (/[ښځڅډړږڼۍې]/.test(text) || /\b(او|په|د|له|تر|سره|چې|کې|شوی|شوي|شوه|شول|دی|ده|دي|کوي|کړي|کیږي|لري|دغه|هغه|موږ|تاسو|دوی|څنګه|ولې|څه|کوم|ازموینه|پوښتنه|ځواب)\b/.test(text)) {
       return { language: 'ps', isRtl: true };
     }
     if (/[ٹڈڑںےہۂ]/.test(text)) {

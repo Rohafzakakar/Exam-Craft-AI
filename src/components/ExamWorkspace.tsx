@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Upload,
   FileText,
@@ -113,14 +113,18 @@ interface AnswerKeyGroup {
 export interface ExamWorkspaceProps {
   isLlmConfigured: boolean;
   externalActiveExamId?: string | null;
+  preselectedDocumentId?: string | null;
+  currentUser?: { full_name?: string; institution?: string } | null;
   onOpenHistory?: () => void;
   onExamsUpdated?: (exams: Exam[]) => void;
   onBackToDashboard?: () => void;
 }
 
 export function ExamWorkspace({
-  isLlmConfigured,
+  isLlmConfigured: _isLlmConfigured,
   externalActiveExamId,
+  preselectedDocumentId,
+  currentUser,
   onOpenHistory,
   onExamsUpdated,
   onBackToDashboard,
@@ -146,6 +150,7 @@ export function ExamWorkspace({
   const [shortCount, setShortCount] = useState<number>(1);
   const [essayCount, setEssayCount] = useState<number>(0);
   const [bloomEnabled, setBloomEnabled] = useState<boolean>(true);
+  const [difficultyProfile, setDifficultyProfile] = useState<'balanced' | 'easy' | 'challenging'>('balanced');
 
   const totalQuestions = mcqCount + tfCount + fillBlankCount + shortCount + essayCount;
 
@@ -163,6 +168,10 @@ export function ExamWorkspace({
   const [answerKeys, setAnswerKeys] = useState<AnswerKeyGroup[]>([]);
   const [viewMode, setViewMode] = useState<'questions' | 'answer_keys'>('questions');
   const [workspaceView, setWorkspaceView] = useState<'editor' | 'preview'>('editor');
+  const activeExamIdRef = useRef<string | null>(null);
+  const externalActiveExamIdRef = useRef<string | null | undefined>(externalActiveExamId);
+  activeExamIdRef.current = activeExam?.id ?? null;
+  externalActiveExamIdRef.current = externalActiveExamId;
 
   // Export engine state
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
@@ -302,6 +311,7 @@ export function ExamWorkspace({
         const data = await res.json();
         setActiveExam(data);
         setActiveGroupIndex(0);
+        setWorkspaceView('editor');
         setStep(3);
         loadAnswerKeys(data.id);
       }
@@ -310,15 +320,60 @@ export function ExamWorkspace({
     }
   };
 
+  // Hydrate default exam parameters from teacher preferences
+  useEffect(() => {
+    if (currentUser?.institution) {
+      setInstitution((prev) => prev || currentUser.institution || '');
+    }
+    try {
+      const savedPrefs = localStorage.getItem('examcraft_teacher_preferences');
+      if (savedPrefs) {
+        const p = JSON.parse(savedPrefs);
+        if (p.faculty) setFaculty((prev) => prev || p.faculty);
+        if (typeof p.duration === 'number' && p.duration >= 15) setDurationMinutes(p.duration);
+        if (typeof p.groupsCount === 'number' && p.groupsCount >= 1 && p.groupsCount <= 10) setGroupsCount(p.groupsCount);
+        if (p.bloom !== undefined) setBloomEnabled(Boolean(p.bloom));
+      }
+    } catch {
+      // ignore invalid JSON
+    }
+  }, [currentUser?.institution]);
+
+  const applyDefaultTitleForDoc = (doc: DocumentInfo) => {
+    const cleanDocTitle = doc.filename.replace(/\.[^/.]+$/, '');
+    if (doc.id === 'doc-cell-biology-101') {
+      setTitle('Cell Biology Midterm Examination');
+      setSubject('Molecular & Cellular Biology');
+    } else if (doc.is_rtl || doc.detected_language === 'fa' || doc.detected_language === 'ps') {
+      setTitle(doc.detected_language === 'ps' ? `د ${cleanDocTitle} ازموینه` : `آزمون ${cleanDocTitle}`);
+      setSubject(cleanDocTitle.includes('دموکراسی') ? 'علوم سیاسی و مبانی مردم‌سالاری' : 'محتوای آموزشی و تخصصی');
+    } else {
+      setTitle(`${cleanDocTitle} Examination`);
+      setSubject('General Educational Subject');
+    }
+  };
+
+  // React to preselected document from Teacher Dashboard
+  useEffect(() => {
+    if (preselectedDocumentId && documents.length > 0) {
+      const target = documents.find((d) => d.id === preselectedDocumentId);
+      if (target) {
+        setSelectedDoc(target);
+        applyDefaultTitleForDoc(target);
+        setStep(2);
+      }
+    }
+  }, [preselectedDocumentId, documents]);
+
   // React to external active exam changes
   useEffect(() => {
     if (externalActiveExamId) {
       loadExamById(externalActiveExamId);
-    } else if (externalActiveExamId === null) {
+    } else if (externalActiveExamId === null && !preselectedDocumentId) {
       setActiveExam(null);
       setStep(1);
     }
-  }, [externalActiveExamId]);
+  }, [externalActiveExamId, preselectedDocumentId]);
 
   // Load existing documents & exams on mount and listen to auth changes
   useEffect(() => {
@@ -361,7 +416,7 @@ export function ExamWorkspace({
         if (onExamsUpdated) {
           onExamsUpdated(data);
         }
-        if (data.length > 0 && !activeExam) {
+        if (data.length > 0 && !activeExamIdRef.current && !externalActiveExamIdRef.current) {
           setActiveExam(data[0]);
           loadAnswerKeys(data[0].id);
         }
@@ -446,6 +501,12 @@ export function ExamWorkspace({
         .filter((p) => !isNaN(p));
     }
 
+    const diffMap: Record<string, Record<string, number>> = {
+      balanced: { easy: 40, medium: 40, hard: 20 },
+      easy: { easy: 70, medium: 25, hard: 5 },
+      challenging: { easy: 15, medium: 45, hard: 40 },
+    };
+
     const payload = {
       document_id: selectedDoc.id,
       selected_pages: parsedPages,
@@ -453,15 +514,15 @@ export function ExamWorkspace({
       subject: subject || 'General Subject',
       institution: institution.trim() || undefined,
       faculty: faculty.trim() || undefined,
-      teacher_name: 'Instructor',
+      teacher_name: currentUser?.full_name || 'Instructor',
       grade_level: 'Undergraduate',
-      duration_minutes: durationMinutes,
+      duration_minutes: Math.max(10, Math.min(300, durationMinutes || 60)),
       total_marks: 100.0,
       language: selectedDoc.detected_language || 'en',
       is_rtl: selectedDoc.is_rtl,
       bloom_enabled: bloomEnabled,
       groups_count: Math.min(10, Math.max(1, groupsCount)),
-      difficulty_distribution: { easy: 40, medium: 40, hard: 20 },
+      difficulty_distribution: diffMap[difficultyProfile] || diffMap.balanced,
       question_types_config: {
         mcq: Math.max(0, mcqCount),
         true_false: Math.max(0, tfCount),
@@ -878,7 +939,7 @@ export function ExamWorkspace({
           <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             2
           </span>
-          Exam & 3-Group Configuration
+          Exam Configuration
         </button>
 
         <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
@@ -919,7 +980,7 @@ export function ExamWorkspace({
               <input
                 type="file"
                 id="doc-upload-input"
-                accept=".pdf,.docx"
+                accept=".pdf,.docx,.txt"
                 onChange={handleFileUpload}
                 disabled={isUploading}
                 className="hidden"
@@ -952,7 +1013,7 @@ export function ExamWorkspace({
           {documents.length > 0 && (
             <div className="bg-white p-6 rounded-2xl border border-stone-200/80 shadow-xs space-y-4">
               <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                Available Grounding Documents ({documents.length})
+                Available Source Documents ({documents.length})
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {documents.map((doc) => {
@@ -1104,8 +1165,39 @@ export function ExamWorkspace({
                   className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
                 />
                 <span className="text-[10px] text-stone-400 mt-1 block">
-                  Leave 'all' to ground on all pages, or specify comma-separated page numbers.
+                  Leave 'all' to use all pages, or specify comma-separated page numbers.
                 </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Duration (Minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="300"
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Math.max(10, Math.min(300, parseInt(e.target.value, 10) || 60)))}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Difficulty Profile
+                  </label>
+                  <select
+                    value={difficultyProfile}
+                    onChange={(e) => setDifficultyProfile(e.target.value as 'balanced' | 'easy' | 'challenging')}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none cursor-pointer"
+                  >
+                    <option value="balanced">Balanced (40% Easy / 40% Med / 20% Hard)</option>
+                    <option value="easy">Foundational (70% Easy / 25% Med / 5% Hard)</option>
+                    <option value="challenging">Advanced (15% Easy / 45% Med / 40% Hard)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1165,65 +1257,65 @@ export function ExamWorkspace({
                 <p className="text-[11px] text-stone-500">
                   Select and enter exact quantities for each question type you need. Set unneeded types to 0.
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <div className="p-2.5 border border-stone-200 rounded-xl text-center bg-stone-50/50">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
                     <span className="text-[11px] font-semibold text-stone-700 block">MCQ (4 Options)</span>
-                    <span className="text-[9px] text-stone-400 block mb-1">2 marks each</span>
+                    <span className="text-[9px] text-stone-400 block mb-1.5">2 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={mcqCount}
                       onChange={(e) => setMcqCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-xs font-bold border border-stone-200 rounded-lg p-1 bg-white focus:ring-1 focus:ring-[#9D174D] outline-none"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
                     />
                   </div>
-                  <div className="p-2.5 border border-stone-200 rounded-xl text-center bg-stone-50/50">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
                     <span className="text-[11px] font-semibold text-stone-700 block">True / False</span>
-                    <span className="text-[9px] text-stone-400 block mb-1">1 mark each</span>
+                    <span className="text-[9px] text-stone-400 block mb-1.5">1 mark each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={tfCount}
                       onChange={(e) => setTfCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-xs font-bold border border-stone-200 rounded-lg p-1 bg-white focus:ring-1 focus:ring-[#9D174D] outline-none"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
                     />
                   </div>
-                  <div className="p-2.5 border border-stone-200 rounded-xl text-center bg-stone-50/50">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
                     <span className="text-[11px] font-semibold text-stone-700 block">Fill in the Blank</span>
-                    <span className="text-[9px] text-stone-400 block mb-1">2 marks each</span>
+                    <span className="text-[9px] text-stone-400 block mb-1.5">2 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={fillBlankCount}
                       onChange={(e) => setFillBlankCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-xs font-bold border border-stone-200 rounded-lg p-1 bg-white focus:ring-1 focus:ring-[#9D174D] outline-none"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
                     />
                   </div>
-                  <div className="p-2.5 border border-stone-200 rounded-xl text-center bg-stone-50/50">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
                     <span className="text-[11px] font-semibold text-stone-700 block">Short Answer</span>
-                    <span className="text-[9px] text-stone-400 block mb-1">3 marks each</span>
+                    <span className="text-[9px] text-stone-400 block mb-1.5">3 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="50"
                       value={shortCount}
                       onChange={(e) => setShortCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-xs font-bold border border-stone-200 rounded-lg p-1 bg-white focus:ring-1 focus:ring-[#9D174D] outline-none"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
                     />
                   </div>
-                  <div className="p-2.5 border border-stone-200 rounded-xl text-center bg-stone-50/50 col-span-2 sm:col-span-1">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 col-span-2 sm:col-span-1">
                     <span className="text-[11px] font-semibold text-stone-700 block">Essay / Long Answer</span>
-                    <span className="text-[9px] text-stone-400 block mb-1">5 marks each</span>
+                    <span className="text-[9px] text-stone-400 block mb-1.5">5 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="30"
                       value={essayCount}
                       onChange={(e) => setEssayCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-xs font-bold border border-stone-200 rounded-lg p-1 bg-white focus:ring-1 focus:ring-[#9D174D] outline-none"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
                     />
                   </div>
                 </div>
@@ -1251,28 +1343,28 @@ export function ExamWorkspace({
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 border-t border-stone-100">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-stone-100">
             <button
+              type="button"
               onClick={() => setStep(1)}
-              className="px-4 py-2 border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50"
+              className="px-4 py-2.5 border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer text-center"
             >
               Back to Documents
             </button>
 
             <button
+              type="button"
               onClick={handleGenerateExam}
-              disabled={isGenerating || !isLlmConfigured}
-              className={`px-6 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs cursor-pointer ${
-                isGenerating || !isLlmConfigured
+              disabled={isGenerating}
+              className={`px-6 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
+                isGenerating
                   ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
                   : 'bg-[#9D174D] hover:bg-[#83133E] text-white'
               }`}
             >
               <Sparkles className="w-4 h-4" />
               <span>
-                {isGenerating
-                  ? 'Generating via OpenRouter...'
-                  : 'Generate 3-Group Exam with OpenRouter (Free)'}
+                {isGenerating ? 'Generating Questions...' : 'Generate Questions'}
               </span>
             </button>
           </div>
@@ -1308,40 +1400,43 @@ export function ExamWorkspace({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setWorkspaceView(workspaceView === 'editor' ? 'preview' : 'editor')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs ${
                   workspaceView === 'preview'
                     ? 'bg-[#9D174D] text-white'
                     : 'bg-pink-50 text-[#9D174D] border border-pink-200 hover:bg-pink-100'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview & Print'}</span>
+                <span className="hidden sm:inline">{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview & Print'}</span>
+                <span className="sm:hidden">{workspaceView === 'preview' ? 'Editor' : 'Preview'}</span>
               </button>
 
               {workspaceView === 'editor' && (
                 <>
                   <button
                     onClick={() => setViewMode('questions')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                    className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                       viewMode === 'questions'
                         ? 'bg-[#9D174D] text-white shadow-xs'
                         : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                     }`}
                   >
-                    Questions View
+                    <span className="hidden sm:inline">Questions View</span>
+                    <span className="sm:hidden">Questions</span>
                   </button>
                   <button
                     onClick={() => setViewMode('answer_keys')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                    className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                       viewMode === 'answer_keys'
                         ? 'bg-[#9D174D] text-white shadow-xs'
                         : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                     }`}
                   >
-                    Answer Keys & Scoring Rubrics
+                    <span className="hidden sm:inline">Answer Keys & Scoring Rubrics</span>
+                    <span className="sm:hidden">Answer Keys</span>
                   </button>
                 </>
               )}
@@ -1349,7 +1444,7 @@ export function ExamWorkspace({
               <button
                 onClick={handleGenerateAiResistant}
                 disabled={isGeneratingAiResistant}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white shadow-xs flex items-center gap-1.5 disabled:opacity-50"
                 title={
                   activeExam.is_rtl
                     ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر هوش مصنوعی)'
@@ -1363,11 +1458,14 @@ export function ExamWorkspace({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 text-pink-200" />
-                    <span>
+                    <Sparkles className="w-3.5 h-3.5 text-pink-200 shrink-0" />
+                    <span className="hidden md:inline">
                       {activeExam.is_rtl
                         ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر AI)'
                         : 'Generate AI-Resistant Questions'}
+                    </span>
+                    <span className="md:hidden">
+                      {activeExam.is_rtl ? 'سوالات تحلیلی (AI)' : 'AI-Resistant Qs'}
                     </span>
                   </>
                 )}
@@ -1375,10 +1473,11 @@ export function ExamWorkspace({
 
               <button
                 onClick={() => setShowExportModal(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export Exam (DOCX / PDF)
+                <span className="hidden sm:inline">Export Exam (DOCX / PDF)</span>
+                <span className="sm:hidden">Export</span>
               </button>
             </div>
           </div>
@@ -1424,15 +1523,15 @@ export function ExamWorkspace({
             />
           ) : (
             <>
-              {/* Group Tabs (Group A, Group B, Group C) */}
-              <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
+              {/* Group Tabs (Group A, Group B, Group C ... Group J) */}
+              <div className="flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto max-w-full">
             {activeExam.groups.map((g, idx) => {
               const isSelected = activeGroupIndex === idx;
               return (
                 <button
                   key={g.id}
                   onClick={() => setActiveGroupIndex(idx)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap ${
                     isSelected
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -1508,18 +1607,18 @@ export function ExamWorkspace({
                                 type="button"
                                 onClick={() => handleMoveQuestion(qIndex, 'up')}
                                 disabled={isFirst || Boolean(reorderingQuestionId)}
-                                className="p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                                className="p-1.5 sm:p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[28px] min-h-[28px] flex items-center justify-center"
                                 title={isFirst ? 'Already at top' : 'Move Question Up'}
                                 aria-label={`Move question ${q.question_order} up`}
                               >
                                 <ChevronUp className="w-3.5 h-3.5" />
                               </button>
-                              <div className="w-[1px] h-3.5 bg-stone-200" />
+                              <div className="w-[1px] h-4 bg-stone-200" />
                               <button
                                 type="button"
                                 onClick={() => handleMoveQuestion(qIndex, 'down')}
                                 disabled={isLast || Boolean(reorderingQuestionId)}
-                                className="p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                                className="p-1.5 sm:p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[28px] min-h-[28px] flex items-center justify-center"
                                 title={isLast ? 'Already at bottom' : 'Move Question Down'}
                                 aria-label={`Move question ${q.question_order} down`}
                               >
@@ -1541,7 +1640,7 @@ export function ExamWorkspace({
                                 }
                               }}
                               disabled={Boolean(regeneratingQuestionId)}
-                              className={`px-2 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
+                              className={`py-1.5 sm:py-1 px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs min-h-[30px] ${
                                 isPromptingRegen
                                   ? 'bg-pink-100 border-[#9D174D] text-[#9D174D]'
                                   : 'bg-stone-100 hover:bg-stone-200 border-stone-200 text-stone-700'
@@ -1556,7 +1655,7 @@ export function ExamWorkspace({
                             <button
                               type="button"
                               onClick={() => handleStartEdit(q)}
-                              className="px-2.5 py-1 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                              className="py-1.5 sm:py-1 px-2.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[30px]"
                               title="Edit Question, Choices, Answer & Rubric"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-stone-600" />
@@ -1570,11 +1669,12 @@ export function ExamWorkspace({
                                 setDeletingQuestion(q);
                                 setDeleteError(null);
                               }}
-                              className="px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                              className="py-1.5 sm:py-1 px-2.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[30px]"
                               title="Delete Question across all groups"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                              <span>Delete Question</span>
+                              <span className="hidden sm:inline">Delete Question</span>
+                              <span className="sm:hidden">Delete</span>
                             </button>
                           </div>
                         ) : (
@@ -1897,7 +1997,7 @@ export function ExamWorkspace({
                     <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
                       <span className="font-semibold text-stone-700 flex items-center gap-1">
                         <BookOpen className="w-3 h-3 text-[#9D174D]" />
-                        Source Provenance:
+                        Source Reference:
                       </span>
                       <span className="bg-stone-100 px-2 py-0.5 rounded font-mono text-[10px]">
                         {q.source_document_name}
@@ -2075,26 +2175,26 @@ export function ExamWorkspace({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-stone-100">
               <button
                 onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer text-center"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleExport('docx')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <FileText className="w-3.5 h-3.5" />
-                Download DOCX (.docx)
+                <span>Download DOCX (.docx)</span>
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                Download PDF (.pdf)
+                <span>Download PDF (.pdf)</span>
               </button>
             </div>
           </div>

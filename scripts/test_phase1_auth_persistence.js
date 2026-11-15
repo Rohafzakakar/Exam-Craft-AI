@@ -220,7 +220,7 @@ async function runTests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: regEmail,
-        password: 'Password123!',
+        password: 'TestMigrationPass#2026',
         full_name: 'Prof. Transfer',
         institution: 'Genetics Institute',
         import_guest_session_id: migratingGuestId,
@@ -269,7 +269,7 @@ async function runTests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: regEmail,
-        password: 'Password123!',
+        password: 'TestIsolatedPass#2026',
         full_name: 'Prof. Clean',
         import_guest_session_id: nonMigratingGuestId,
         consent_import_guest: false,

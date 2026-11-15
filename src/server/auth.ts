@@ -1,8 +1,22 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import dotenv from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
 import { db, UserRecord } from './db';
 
-const SECRET_KEY = process.env.SECRET_KEY || 'examcraft-antigravity-secret-key-phase1-2026';
+dotenv.config();
+
+export function getSecretKey(): string {
+  const key = process.env.SECRET_KEY?.trim();
+  if (!key || key === 'examcraft-secret-key-2026-change-this' || key === 'your-secure-jwt-secret-key-here') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('[AuthService] CRITICAL: SECRET_KEY environment variable is missing or using placeholder in production.');
+    }
+    return 'examcraft-development-secret-key-fallback-2026';
+  }
+  return key;
+}
+
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days expiration
 
 export interface TokenPayload {
@@ -63,7 +77,7 @@ export function createToken(user: UserRecord): string {
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
-    .createHmac('sha256', SECRET_KEY)
+    .createHmac('sha256', getSecretKey())
     .update(payloadBase64)
     .digest('base64url');
 
@@ -77,7 +91,7 @@ export function verifyToken(token: string): TokenPayload | null {
 
   const [payloadBase64, signature] = parts;
   const expectedSignature = crypto
-    .createHmac('sha256', SECRET_KEY)
+    .createHmac('sha256', getSecretKey())
     .update(payloadBase64)
     .digest('base64url');
 

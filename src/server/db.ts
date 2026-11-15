@@ -1,9 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
-// Database Directory & Path Setup
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+// Database Directory & Path Setup (supports persistent volume mount override via EXAMCRAFT_DATA_DIR)
+const DATA_DIR = process.env.EXAMCRAFT_DATA_DIR
+  ? path.resolve(process.env.EXAMCRAFT_DATA_DIR)
+  : path.resolve(process.cwd(), 'data');
 const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
 const DB_PATH = path.resolve(DATA_DIR, 'examcraft.db');
 
@@ -114,36 +117,70 @@ class ExamCraftDatabase {
   private db!: DatabaseSync;
 
   constructor() {
-    this.initDirectoriesAndBackup();
+    this.initDirectories();
     this.initDatabase();
+    if (fs.existsSync(DB_PATH)) {
+      this.createRollingBackup();
+    }
     this.runMigrations();
     this.seedInitialDataIfEmpty();
+    this.ensurePrimaryTeacherAccount();
     this.ensureInitialBackupAfterSeeding();
   }
 
-  private initDirectoriesAndBackup(): void {
+  private initDirectories(): void {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     if (!fs.existsSync(BACKUPS_DIR)) {
       fs.mkdirSync(BACKUPS_DIR, { recursive: true });
     }
+  }
 
-    // Automated rolling backup if database exists
-    if (fs.existsSync(DB_PATH)) {
-      this.createRollingBackup();
+  /**
+   * Safely flushes SQLite Write-Ahead Log (WAL) frames into the main database file.
+   * PASSIVE: checkpoints without blocking active readers.
+   * TRUNCATE: checkpoints all frames and resets WAL size to 0.
+   */
+  public checkpoint(mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCATE' = 'PASSIVE'): { busy: boolean; checkpointed: number; log: number } {
+    if (!this.db) return { busy: false, checkpointed: 0, log: 0 };
+    try {
+      const row = this.db.prepare(`PRAGMA wal_checkpoint(${mode});`).get() as any;
+      return {
+        busy: row?.busy === 1,
+        log: row?.log ?? 0,
+        checkpointed: row?.checkpointed ?? 0,
+      };
+    } catch (err: any) {
+      console.warn('[DatabaseService] Checkpoint warning:', err.message);
+      return { busy: true, checkpointed: 0, log: 0 };
     }
   }
 
   public createRollingBackup(): string | null {
-    if (!fs.existsSync(DB_PATH)) return null;
+    if (!this.db || !fs.existsSync(DB_PATH)) return null;
     try {
       if (!fs.existsSync(BACKUPS_DIR)) {
         fs.mkdirSync(BACKUPS_DIR, { recursive: true });
       }
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupFile = path.resolve(BACKUPS_DIR, `examcraft_backup_${timestamp}.db`);
-      fs.copyFileSync(DB_PATH, backupFile);
+
+      // Flush WAL frames prior to backup creation
+      this.checkpoint('PASSIVE');
+
+      // Use atomic SQLite VACUUM INTO for a consistent transactional snapshot across WAL mode
+      try {
+        if (fs.existsSync(backupFile)) {
+          fs.unlinkSync(backupFile);
+        }
+        const escapedPath = backupFile.replace(/'/g, "''");
+        this.db.exec(`VACUUM INTO '${escapedPath}';`);
+      } catch (vacErr: any) {
+        console.warn('[DatabaseService] VACUUM INTO fallback to checkpoint + copy:', vacErr?.message);
+        this.checkpoint('TRUNCATE');
+        fs.copyFileSync(DB_PATH, backupFile);
+      }
 
       // Keep only the last 5 backups
       const existingBackups = fs
@@ -184,6 +221,20 @@ class ExamCraftDatabase {
     // Enable WAL mode for high concurrency and write safety
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA foreign_keys = ON;');
+    this.db.exec('PRAGMA synchronous = NORMAL;');
+    // Set auto-checkpoint threshold to 100 pages (~400KB)
+    this.db.exec('PRAGMA wal_autocheckpoint = 100;');
+  }
+
+  public close(): void {
+    if (this.db) {
+      try {
+        this.checkpoint('TRUNCATE');
+        this.db.close();
+      } catch (err: any) {
+        console.warn('[DatabaseService] Close warning:', err?.message);
+      }
+    }
   }
 
   private runMigrations(): void {
@@ -698,6 +749,42 @@ class ExamCraftDatabase {
   }
 
   // --- USER METHODS ---
+  public ensurePrimaryTeacherAccount(): void {
+    const existing = this.getUserByEmail('madina.kakar16@gmail.com');
+    if (!existing) {
+      const initialPassword = process.env.INITIAL_TEACHER_PASSWORD?.trim();
+      if (!initialPassword) {
+        console.warn(
+          '[DatabaseService] No existing teacher account found and INITIAL_TEACHER_PASSWORD is not configured in environment. ' +
+          'Refusing to create an account with a predictable or default password. ' +
+          'Please set INITIAL_TEACHER_PASSWORD in your environment to seed the account, or register via the Teacher Portal.'
+        );
+        return;
+      }
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.scryptSync(initialPassword, salt, 64).toString('hex');
+      const now = new Date().toISOString();
+      const teacherId = 'usr-1794290842256-2v6sd';
+      const insertStmt = this.db.prepare(`
+        INSERT OR IGNORE INTO users (id, email, password_hash, salt, full_name, institution, role, token_version, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `);
+      insertStmt.run(
+        teacherId,
+        'madina.kakar16@gmail.com',
+        hash,
+        salt,
+        'madina.kakar16',
+        'Academic Faculty',
+        'teacher',
+        now,
+        now
+      );
+      this.checkpoint('TRUNCATE');
+      console.log('[DatabaseService] Primary teacher account initialized securely from INITIAL_TEACHER_PASSWORD.');
+    }
+  }
+
   public createUser(user: Omit<UserRecord, 'token_version'>): UserRecord {
     const stmt = this.db.prepare(`
       INSERT INTO users (id, email, password_hash, salt, full_name, institution, role, token_version, created_at, updated_at)
@@ -714,12 +801,16 @@ class ExamCraftDatabase {
       user.created_at,
       user.updated_at
     );
+    // Immediately persist user write across WAL into main database file
+    this.checkpoint('TRUNCATE');
     return { ...user, token_version: 1 };
   }
 
   public getUserByEmail(email: string): UserRecord | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    const row = stmt.get(email.toLowerCase().trim()) as any;
+    const normalized = (email || '').toLowerCase().trim();
+    if (!normalized) return null;
+    const stmt = this.db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)');
+    const row = stmt.get(normalized) as any;
     return row || null;
   }
 

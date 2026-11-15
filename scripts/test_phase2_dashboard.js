@@ -102,13 +102,13 @@ async function runDashboardTests() {
   const ts = Date.now();
   const teacherA = {
     email: `dash_teacher_a_${ts}@test.edu`,
-    password: 'Password123!',
+    password: 'TestDashPassA#2026',
     full_name: 'Professor Maryam Karimi',
     institution: 'Kabul University',
   };
   const teacherB = {
     email: `dash_teacher_b_${ts}@test.edu`,
-    password: 'Password123!',
+    password: 'TestDashPassB#2026',
     full_name: 'Dr. Farid Noori',
     institution: 'Balkh University',
   };

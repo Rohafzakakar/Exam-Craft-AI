@@ -115,25 +115,25 @@ export function ExamHistoryModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#9D174D] to-[#83133E] text-white p-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center font-black text-xl">
+        <div className="bg-gradient-to-r from-[#9D174D] to-[#83133E] text-white p-4 sm:p-6 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center font-black text-xl shrink-0">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">Examination History & Archive</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold">Examination History & Archive</h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
                   {exams.length} {exams.length === 1 ? 'Exam' : 'Exams'}
                 </span>
               </div>
               <p className="text-xs text-pink-100 font-medium">
-                Switch between previously synthesized examination papers or start fresh
+                Switch between previously generated examination papers or start fresh
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => {
                 onCreateNewExam();
@@ -146,6 +146,7 @@ export function ExamHistoryModal({
             </button>
             <button
               onClick={onClose}
+              aria-label="Close modal"
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -201,7 +202,7 @@ export function ExamHistoryModal({
               </div>
               <h3 className="text-sm font-bold text-stone-800">No Saved Examinations Yet</h3>
               <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                Upload a document and synthesize your first multi-group examination paper to begin archiving.
+                Upload a document and generate your first multi-group examination paper to begin archiving.
               </p>
               <button
                 onClick={() => {

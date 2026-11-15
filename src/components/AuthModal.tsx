@@ -25,9 +25,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (user: TeacherUser) => void;
+  initialNotice?: string | null;
 }
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,17 +50,17 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setSuccessMsg(null);
   };
 
-  // Reset sensitive fields on modal open/close
+  // Reset sensitive fields on modal open/close and apply initialNotice if present
   useEffect(() => {
     if (isOpen) {
       setPassword('');
-      setErrorMsg(null);
+      setErrorMsg(initialNotice || null);
       setSuccessMsg(null);
       setConsentImportGuest(false);
     } else {
       setPassword('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialNotice]);
 
   // Cleanly wipe all form details on logout or token expiration
   useEffect(() => {
@@ -105,14 +106,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setIsLoading(true);
 
     try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+
       if (tab === 'login') {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: cleanEmail, password }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data.detail || 'Login failed. Please check your credentials.');
         }
@@ -132,16 +135,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email,
+            email: cleanEmail,
             password,
-            full_name: fullName,
-            institution,
+            full_name: fullName.trim(),
+            institution: institution.trim(),
             import_guest_session_id: guestId,
             consent_import_guest: consentImportGuest,
           }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data.detail || 'Registration failed. Please check your details.');
         }
@@ -168,13 +171,13 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
       <div
-        className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 my-auto max-h-[94vh]"
+        className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 my-auto max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Left Column: Teacher Dashboard & Document Archive Explanation (md:col-span-5) */}
-        <div className="md:col-span-5 bg-gradient-to-br from-pink-50/90 via-pink-50/50 to-white p-6 sm:p-7 border-b md:border-b-0 md:border-r border-pink-100 flex flex-col justify-between space-y-6 overflow-y-auto">
+        {/* Left Column: Teacher Dashboard & Document Archive Explanation (Hidden on mobile below md) */}
+        <div className="hidden md:flex md:col-span-5 bg-gradient-to-br from-pink-50/90 via-pink-50/50 to-white p-6 sm:p-7 border-b md:border-b-0 md:border-r border-pink-100 flex-col justify-between space-y-6 overflow-y-auto">
           <div className="space-y-5">
             {/* Header badge & title */}
             <div className="space-y-2">
@@ -232,17 +235,18 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <div className="pt-4 border-t border-pink-200/60 flex items-center gap-2 text-[11px] text-stone-500">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Encrypted passwords & isolated SQLite database storage</span>
+            <span>Encrypted passwords & private educator archive</span>
           </div>
         </div>
 
-        {/* Right Column: Sign In / Create Account Form (md:col-span-7) */}
-        <div className="md:col-span-7 flex flex-col justify-between overflow-y-auto">
+        {/* Right Column: Sign In / Create Account Form */}
+        <div className="col-span-1 md:col-span-7 flex flex-col justify-between overflow-y-auto">
           {/* Modal Header */}
-          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-6 relative">
+          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-5 sm:p-6 relative">
             <button
               onClick={handleClose}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="absolute top-4 sm:top-5 right-4 sm:right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
@@ -292,7 +296,18 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               {errorMsg && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
+                  <div className="flex-1 space-y-1">
+                    <span>{errorMsg}</span>
+                    {errorMsg.includes('already exists') && tab === 'register' && (
+                      <button
+                        type="button"
+                        onClick={() => handleTabSwitch('login')}
+                        className="block font-bold text-[#9D174D] hover:underline cursor-pointer"
+                      >
+                        Click here to Sign In with this email &rarr;
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -373,6 +388,11 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
                   />
                 </div>
+                {tab === 'login' && (
+                  <p className="text-[11px] text-stone-500 mt-1.5 leading-tight">
+                    Registered accounts preserve personal exam archives. <span className="text-stone-400">(Offline/local deployment: credential recovery via administrator)</span>
+                  </p>
+                )}
               </div>
 
               {/* Explicit Consent Checkbox for Guest Data Migration */}

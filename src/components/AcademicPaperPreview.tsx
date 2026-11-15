@@ -58,37 +58,37 @@ export function AcademicPaperPreview({
   return (
     <div className="space-y-6">
       {/* PREVIEW TOOLBAR (Hidden during print) */}
-      <div className="no-print bg-white p-4 rounded-2xl border border-stone-200/90 shadow-xs flex flex-wrap items-center justify-between gap-4 sticky top-16 z-20">
-        <div className="flex items-center gap-3">
+      <div className="no-print bg-white p-3 sm:p-4 rounded-2xl border border-stone-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sticky top-14 sm:top-16 z-20">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             onClick={onClose}
-            className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0"
             title="Return to Editor"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Editor</span>
+            <span>Editor</span>
           </button>
 
-          <div className="h-5 w-px bg-stone-200" />
+          <div className="h-5 w-px bg-stone-200 shrink-0" />
 
-          <div>
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-[#9D174D]" />
-              Academic Examination Sheet Preview
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-bold text-stone-900 flex items-center gap-1.5 sm:gap-2 truncate">
+              <Eye className="w-4 h-4 text-[#9D174D] shrink-0" />
+              <span>Academic Sheet Preview</span>
             </h3>
-            <p className="text-[11px] text-stone-500">
-              Read-only authentic print preview of student papers & confidential answer keys
+            <p className="text-[10px] sm:text-[11px] text-stone-500 truncate hidden sm:block">
+              Print preview of student papers & confidential answer keys
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center flex-wrap gap-2">
+        <div className="flex items-center flex-wrap gap-2 justify-between md:justify-end">
           {/* Target Mode Selector */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl text-xs font-medium">
             <button
               onClick={() => setViewTarget('both')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
                 viewTarget === 'both'
                   ? 'bg-white text-stone-900 font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -98,81 +98,82 @@ export function AcademicPaperPreview({
             </button>
             <button
               onClick={() => setViewTarget('exam')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
                 viewTarget === 'exam'
                   ? 'bg-white text-stone-900 font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Student Paper
+              Paper
             </button>
             <button
               onClick={() => setViewTarget('answer_key')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
                 viewTarget === 'answer_key'
                   ? 'bg-white text-stone-900 font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Answer Key
+              Key
             </button>
           </div>
 
-          <div className="h-5 w-px bg-stone-200" />
+          <div className="h-5 w-px bg-stone-200 hidden sm:block" />
 
           {/* Scope Selector: Single Group vs All Groups */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl text-xs font-medium">
             <button
               onClick={() => setScope('single')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
                 scope === 'single'
                   ? 'bg-white text-stone-900 font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Current Group
+              Current
             </button>
             <button
               onClick={() => setScope('all')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
                 scope === 'all'
                   ? 'bg-white text-stone-900 font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              All {exam.groups_count} Groups (Compiled)
+              All {exam.groups_count} Groups
             </button>
           </div>
 
-          <div className="h-5 w-px bg-stone-200" />
+          <div className="h-5 w-px bg-stone-200 hidden sm:block" />
 
-          {/* Print Button */}
-          <button
-            type="button"
-            data-testid="print-sheet-btn"
-            onClick={handlePrint}
-            className="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Print Examination Sheets & Answer Keys"
-          >
-            <Printer className="w-3.5 h-3.5 text-stone-600" />
-            <span>Print Sheet</span>
-          </button>
-
-          {/* Phase 4.2 Export Triggers */}
-          <button
-            onClick={() => onExport('docx', viewTarget, scope === 'all')}
-            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>DOCX</span>
-          </button>
-          <button
-            onClick={() => onExport('pdf', viewTarget, scope === 'all')}
-            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>PDF</span>
-          </button>
+          {/* Print & Export Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              data-testid="print-sheet-btn"
+              onClick={handlePrint}
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Print Examination Sheets & Answer Keys"
+              aria-label="Print Sheet"
+            >
+              <Printer className="w-3.5 h-3.5 text-stone-600" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+            <button
+              onClick={() => onExport('docx', viewTarget, scope === 'all')}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>DOCX</span>
+            </button>
+            <button
+              onClick={() => onExport('pdf', viewTarget, scope === 'all')}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -216,7 +217,7 @@ export function AcademicPaperPreview({
               {(viewTarget === 'both' || viewTarget === 'exam') && (
                 <div
                   dir={isRtl ? 'rtl' : 'ltr'}
-                  className={`paper-sheet ${gIdx > 0 ? 'print-page-break' : ''} bg-white rounded-2xl border border-stone-300 shadow-lg p-10 max-w-4xl mx-auto space-y-6 text-stone-900 font-serif leading-relaxed`}
+                  className={`paper-sheet ${gIdx > 0 ? 'print-page-break' : ''} bg-white rounded-2xl border border-stone-300 shadow-lg p-4 sm:p-6 md:p-10 max-w-4xl mx-auto space-y-6 text-stone-900 font-serif leading-relaxed`}
                 >
                   {/* Institutional Header */}
                   <div className="text-center space-y-1 border-b border-stone-200 pb-4">
@@ -228,15 +229,15 @@ export function AcademicPaperPreview({
                       const instHeader = instParts.join(' — ');
                       if (!instHeader) return null;
                       return (
-                        <h2 className="text-base font-bold tracking-wide uppercase text-stone-800">
+                        <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase text-stone-800">
                           {instHeader}
                         </h2>
                       );
                     })()}
-                    <h1 className="text-xl font-black text-stone-950 font-sans tracking-tight">
+                    <h1 className="text-lg sm:text-xl font-black text-stone-950 font-sans tracking-tight">
                       {exam.title}
                     </h1>
-                    <div className="text-xs text-stone-600 italic flex items-center justify-center gap-3">
+                    <div className="text-xs text-stone-600 italic flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                       <span>Subject: {exam.subject}</span>
                       {exam.grade_level && <span>• Class: {exam.grade_level}</span>}
                       {exam.teacher_name && <span>• Instructor: {exam.teacher_name}</span>}
@@ -244,14 +245,14 @@ export function AcademicPaperPreview({
                   </div>
 
                   {/* Student Details Grid (2 rows x 4 columns) */}
-                  <div className="border border-stone-300 rounded-lg text-xs p-3 font-sans grid grid-cols-2 md:grid-cols-4 gap-2 bg-stone-50/50">
-                    <div className="col-span-2">
-                      <span className="text-stone-500">Student Name:</span>{' '}
-                      <span className="border-b border-stone-400 inline-block w-48"></span>
+                  <div className="border border-stone-300 rounded-lg text-xs p-3 font-sans grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-2 bg-stone-50/50">
+                    <div className="col-span-2 flex items-center gap-1.5 min-w-0">
+                      <span className="text-stone-500 whitespace-nowrap">Student Name:</span>
+                      <span className="border-b border-stone-400 flex-1 min-w-[60px] inline-block"></span>
                     </div>
-                    <div className="col-span-2">
-                      <span className="text-stone-500">Roll / Seat No:</span>{' '}
-                      <span className="border-b border-stone-400 inline-block w-32"></span>
+                    <div className="col-span-2 flex items-center gap-1.5 min-w-0">
+                      <span className="text-stone-500 whitespace-nowrap">Roll / Seat No:</span>
+                      <span className="border-b border-stone-400 flex-1 min-w-[60px] inline-block"></span>
                     </div>
                     <div>
                       <span className="text-stone-500">Date:</span>{' '}
@@ -396,36 +397,36 @@ export function AcademicPaperPreview({
               {(viewTarget === 'both' || viewTarget === 'answer_key') && (
                 <div
                   dir={isRtl ? 'rtl' : 'ltr'}
-                  className={`paper-sheet ${viewTarget === 'both' || gIdx > 0 ? 'print-page-break' : ''} bg-white rounded-2xl border border-rose-200 shadow-lg p-10 max-w-4xl mx-auto space-y-6 text-stone-900 font-sans`}
+                  className={`paper-sheet ${viewTarget === 'both' || gIdx > 0 ? 'print-page-break' : ''} bg-white rounded-2xl border border-rose-200 shadow-lg p-4 sm:p-6 md:p-10 max-w-4xl mx-auto space-y-6 text-stone-900 font-sans`}
                 >
                   {/* Confidential Header */}
-                  <div className="border-b-2 border-rose-600 pb-3 flex items-center justify-between">
+                  <div className="border-b-2 border-rose-600 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-xs">
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        CONFIDENTIAL - OFFICIAL TEACHER ANSWER KEY
+                        <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                        <span>CONFIDENTIAL - OFFICIAL TEACHER ANSWER KEY</span>
                       </div>
-                      <h2 className="text-base font-bold text-stone-900 mt-1">
+                      <h2 className="text-sm sm:text-base font-bold text-stone-900 mt-1">
                         {exam.title} • {group.group_name} Scoring Rubric
                       </h2>
                     </div>
-                    <div className="text-right text-xs text-stone-500">
+                    <div className="text-left sm:text-right text-xs text-stone-500">
                       <div>Total Questions: {sortedQuestions.length}</div>
                       <div className="font-bold text-rose-700">Total Marks: {groupMarks} pts</div>
                     </div>
                   </div>
 
-                  {/* Structured Answer Key Table */}
-                  <div className="border border-stone-200 rounded-xl overflow-hidden print:overflow-visible print:border-none">
-                    <table className="w-full text-left text-xs border-collapse">
+                  {/* Structured Answer Key Table (Horizontally scrollable on mobile to prevent clipping) */}
+                  <div className="border border-stone-200 rounded-xl overflow-x-auto print:overflow-visible print:border-none shadow-2xs">
+                    <table className={`w-full min-w-[620px] text-xs border-collapse ${isRtl ? 'text-right' : 'text-left'}`}>
                       <thead className="bg-stone-100/80 border-b border-stone-200 text-stone-700 font-bold">
                         <tr>
                           <th className="p-2.5 w-12 text-center">Q#</th>
-                          <th className="p-2.5 w-24">Type</th>
+                          <th className={`p-2.5 w-24 ${isRtl ? 'text-right' : 'text-left'}`}>Type</th>
                           <th className="p-2.5 w-16 text-center">Marks</th>
-                          <th className="p-2.5 w-40">Correct Answer</th>
-                          <th className="p-2.5">Explanation</th>
-                          <th className="p-2.5 w-48 bg-rose-50/50">Source Provenance</th>
+                          <th className={`p-2.5 w-40 ${isRtl ? 'text-right' : 'text-left'}`}>Correct Answer</th>
+                          <th className={`p-2.5 ${isRtl ? 'text-right' : 'text-left'}`}>Explanation</th>
+                          <th className={`p-2.5 w-48 bg-rose-50/50 ${isRtl ? 'text-right' : 'text-left'}`}>Source Reference</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-200 text-stone-800">

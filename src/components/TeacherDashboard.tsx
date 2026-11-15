@@ -285,7 +285,7 @@ export function TeacherDashboard({
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert(`Export error: ${err.message}`);
+      setErrorMsg(`Export error: ${err.message}`);
     } finally {
       setDownloadingId(null);
     }
@@ -305,7 +305,7 @@ export function TeacherDashboard({
       setTimeout(() => setActionSuccessMsg(null), 4000);
       window.dispatchEvent(new CustomEvent('examcraft_auth_changed'));
     } catch (err: any) {
-      alert(`Delete error: ${err.message}`);
+      setErrorMsg(`Delete error: ${err.message}`);
     }
   };
 
@@ -326,7 +326,7 @@ export function TeacherDashboard({
       setTimeout(() => setActionSuccessMsg(null), 4000);
       window.dispatchEvent(new CustomEvent('examcraft_auth_changed'));
     } catch (err: any) {
-      alert(`Document deletion error: ${err.message}`);
+      setErrorMsg(`Document deletion error: ${err.message}`);
     }
   };
 
@@ -690,64 +690,64 @@ export function TeacherDashboard({
       {!loading && !errorMsg && activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Summary Metric Cards (Calculated directly from authorized data) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-stone-500">Saved Examinations</span>
-                <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#9D174D] flex items-center justify-center">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Saved Examinations</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0">
                   <BookOpen className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
                 {stats.totalExams}
               </div>
-              <div className="text-[11px] text-stone-400">
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
                 {stats.totalExams === 1 ? '1 examination created' : `${stats.totalExams} examinations total`}
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-2">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-stone-500">Total Questions</span>
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Total Questions</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                   <Award className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
                 {stats.totalQuestions}
               </div>
-              <div className="text-[11px] text-stone-400">
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
                 Avg. {stats.avgQuestionsPerExam} questions/exam
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-2">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-stone-500">Exam Groups (A–J)</span>
-                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Exam Groups (A–J)</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
                   <Layers className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
                 {stats.totalGroups}
               </div>
-              <div className="text-[11px] text-stone-400">
-                Anti-cheating group variants
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
+                Anti-cheating variants
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-2">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-stone-500">Indexed Documents</span>
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Indexed Documents</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
                   <FileText className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
                 {stats.totalDocs}
               </div>
-              <div className="text-[11px] text-stone-400">
-                Authorized educational sources
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
+                Curriculum sources
               </div>
             </div>
           </div>
@@ -762,7 +762,7 @@ export function TeacherDashboard({
                 <Plus className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-bold text-stone-900 group-hover:text-[#9D174D] transition-colors">
-                Generate New Exam
+                Generate Questions
               </h3>
               <p className="text-xs text-stone-500 leading-relaxed">
                 Upload or select a textbook to generate source-grounded questions across dynamic groups A–J.
@@ -964,9 +964,9 @@ export function TeacherDashboard({
             </div>
 
             {/* Language orientation filter */}
-            <div className="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-100">
-              <div className="flex items-center gap-2">
-                <span>Language & Script:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100 gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-medium text-stone-500">Language:</span>
                 <button
                   onClick={() => setExamLangFilter('all')}
                   className={`px-2 py-0.5 rounded text-[11px] font-semibold cursor-pointer ${
@@ -993,7 +993,7 @@ export function TeacherDashboard({
                 </button>
               </div>
 
-              <span>Showing {filteredExams.length} of {exams.length} examinations</span>
+              <span className="text-[11px] text-stone-400">Showing {filteredExams.length} of {exams.length} examinations</span>
             </div>
           </div>
 
@@ -1148,7 +1148,7 @@ export function TeacherDashboard({
               <div>
                 <h3 className="text-sm font-bold text-stone-900">Curriculum Source Documents</h3>
                 <p className="text-xs text-stone-500">
-                  Authorized textbooks and course syllabus documents used for RAG grounding
+                  Authorized textbooks and course syllabus documents used as exam source material
                 </p>
               </div>
 
@@ -1250,14 +1250,14 @@ export function TeacherDashboard({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-stone-100">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-100">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => onCreateNewExam(doc.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Generate Exam</span>
+                          <span>Generate Questions</span>
                         </button>
 
                         <button
@@ -1318,7 +1318,7 @@ export function TeacherDashboard({
                       Chunks: {selectedDocForChunks.filename}
                     </h3>
                     <p className="text-[11px] text-stone-500">
-                      {selectedDocForChunks.chunks_count} segments indexed for retrieval
+                      {selectedDocForChunks.chunks_count} sections indexed from document
                     </p>
                   </div>
                   <button
@@ -1331,7 +1331,7 @@ export function TeacherDashboard({
 
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   {loadingChunks ? (
-                    <div className="p-8 text-center text-stone-500 text-xs">Loading chunk fragments...</div>
+                    <div className="p-8 text-center text-stone-500 text-xs">Loading document sections...</div>
                   ) : docChunks.length === 0 ? (
                     <div className="p-8 text-center text-stone-500 text-xs">No chunk segments found.</div>
                   ) : (

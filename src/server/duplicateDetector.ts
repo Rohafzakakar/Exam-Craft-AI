@@ -36,9 +36,12 @@ export function getQuestionTokens(text: string): Set<string> {
     'describes', 'function', 'primary', 'principle', 'demonstrated', 'section', 'analysis', 'true', 'false',
     'concise', 'sentences', 'explain', 'discuss', 'synthesize', 'evaluate', 'complete', 'following', 'based',
     'کدام', 'چه', 'چگونه', 'چرا', 'آیا', 'بر', 'اساس', 'طبق', 'متن', 'منبع', 'بخش', 'مطرح', 'شده', 'مفهوم',
-    'اساسی', 'درستی', 'بیان', 'می', 'کند', 'صحیح', 'غلط', 'تحلیل', 'مورد', 'یکی', 'از', 'و', 'به', 'در', 'با'
+    'اساسی', 'درستی', 'بیان', 'می', 'کند', 'صحیح', 'غلط', 'تحلیل', 'مورد', 'یکی', 'از', 'و', 'به', 'در', 'با',
+    'او', 'په', 'د', 'له', 'تر', 'سره', 'چې', 'دا', 'دغه', 'هغه', 'کې', 'نه', 'شوی', 'دی', 'ده', 'دي',
+    'کوم', 'څه', 'څنګه', 'ولې', 'سمه', 'ناسمه', 'شول', 'کوي', 'کړي', 'شو', 'ګرځي', 'لري', 'راځي', 'کیږي',
+    'شي', 'وي', 'وو', 'وه', 'شته', 'هم', 'خو', 'نو', 'که', 'دوی', 'موږ', 'تاسو'
   ]);
-  const words = normalizeQuestionText(text).split(' ').filter((w) => w.length > 2 && !stopwords.has(w));
+  const words = normalizeQuestionText(text).split(' ').filter((w) => w.length > 1 && !stopwords.has(w));
   return new Set(words);
 }
 
@@ -98,9 +101,8 @@ export function areQuestionsDuplicate(q1: QuestionCandidate, q2: QuestionCandida
   if (q1.correct_answer && q2.correct_answer) {
     const normAns1 = normalizeQuestionText(q1.correct_answer);
     const normAns2 = normalizeQuestionText(q2.correct_answer);
-    const isBinaryAns =
-      (normAns1 === 'true' || normAns1 === 'false' || normAns1 === 'صحیح' || normAns1 === 'غلط') &&
-      (normAns2 === 'true' || normAns2 === 'false' || normAns2 === 'صحیح' || normAns2 === 'غلط');
+    const binaryTerms = new Set(['true', 'false', 'صحیح', 'غلط', 'سمه', 'ناسمه', 'صحيح', 'خطأ', 'درست']);
+    const isBinaryAns = binaryTerms.has(normAns1) && binaryTerms.has(normAns2);
     const isEssay = q1.question_type === 'essay' || q2.question_type === 'essay';
 
     if (!isBinaryAns && !isEssay) {

@@ -23,12 +23,42 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment
+# Environment & Secrets (keep .env.example tracked)
 .env
+.env.*
+!.env.example
+*.local
+
+# Databases, Backups & User Uploads
+data/
+/data/
 *.db
--e 
+*.db-wal
+*.db-shm
+*-wal
+*-shm
+*.sqlite*
+examcraft.db*
+
+# Backup Archives
+*.tar.gz
+*.tgz
+*.zip
+*.bak
+
+# Diagnostic Artifacts, Screenshots & Temporary Exports
+.aistudio/
+tests/screenshots/
+tests/*.json
+*.pdf
+*.png
+!public/**/*.png
+
+# Python caches
 __pycache__/
 *.pyc
 .pytest_cache/
-*.sqlite*
-examcraft.db*
+
+# Legacy Inactive Backend
+backend/
+

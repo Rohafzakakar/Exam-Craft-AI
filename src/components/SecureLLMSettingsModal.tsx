@@ -199,20 +199,20 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
-                Secure LLM Settings
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2 flex-wrap">
+                Developer / Admin LLM Settings
                 <span className="text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-stone-200 text-stone-700">
-                  Teacher / Admin
+                  Developer / Admin
                 </span>
               </h2>
               <p className="text-xs text-stone-500">
-                In-memory credential binding for examination generation
+                Optional in-memory external AI provider configuration
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 transition-colors"
+            className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -220,9 +220,9 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
           {/* Provider & Model Metadata Bar */}
-          <div className="grid grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200/80 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200/80 text-xs">
             <div className="flex items-center gap-2">
               <Cpu className="w-4 h-4 text-[#9D174D]" />
               <div>
@@ -325,13 +325,13 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
                 Your API key is <span className="font-semibold text-stone-900">never</span> saved in{' '}
                 <code className="text-stone-700">localStorage</code> or{' '}
                 <code className="text-stone-700">sessionStorage</code>. It is transmitted over
-                HTTPS directly into active FastAPI server RAM for the current session and is never
+                HTTPS directly into active Express server RAM for the current session and is never
                 written to disk or database.
               </div>
             </div>
 
             {/* Form Action Buttons */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="submit"
                 disabled={isSaving || !apiKeyInput.trim() || apiKeyInput.trim().length < 10}
@@ -385,7 +385,7 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
 
           {/* Connection Test Section */}
           <div className="border-t border-stone-200 pt-5 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold text-stone-900">Verify OpenRouter Connection</h3>
                 <p className="text-[11px] text-stone-500">

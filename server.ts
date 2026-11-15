@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
+dotenv.config();
 import { GoogleGenAI } from '@google/genai';
 import { PDFParse } from 'pdf-parse';
 import {
@@ -52,7 +53,9 @@ import type { QuestionCandidate } from './src/server/duplicateDetector.js';
 import { parseDocxBuffer, detectLanguageAndDirection, decodeXmlEntities } from './src/server/docxParser.js';
 import {
   cleanLeadingPersianDiscourseMarkers,
+  cleanLeadingPashtoDiscourseMarkers,
   extractPersianEducationalTopic,
+  extractPashtoEducationalTopic,
   extractEnglishEducationalTopic,
   isValidEducationalTopic,
   sanitizeEducationalText,
@@ -65,7 +68,14 @@ import {
   extractCleanSubstantiveSentences,
   removeRagBoilerplateFromQuestionStem,
   formatConcisePersianOption,
+  formatConcisePashtoOption,
   generateConceptSpecificPersianDistractors,
+  generateConceptSpecificPashtoDistractors,
+  detectTextLanguage,
+  validateQuestionLanguage,
+  validateAcademicQuestion,
+  getExamLocalization,
+  EXAM_LOCALIZATIONS,
 } from './src/server/textQuality.js';
 import { generateAiResistantDraft } from './src/server/aiResistantGenerator.js';
 export type { QuestionCandidate };
@@ -77,12 +87,20 @@ export {
   computeJaccardSimilarity,
   decodeXmlEntities,
   cleanLeadingPersianDiscourseMarkers,
+  cleanLeadingPashtoDiscourseMarkers,
   extractPersianEducationalTopic,
+  extractPashtoEducationalTopic,
   extractEnglishEducationalTopic,
   extractCleanSubstantiveSentences,
   removeRagBoilerplateFromQuestionStem,
   formatConcisePersianOption,
+  formatConcisePashtoOption,
   generateConceptSpecificPersianDistractors,
+  generateConceptSpecificPashtoDistractors,
+  detectTextLanguage,
+  validateQuestionLanguage,
+  validateAcademicQuestion,
+  getExamLocalization,
 };
 
 dotenv.config();
@@ -690,7 +708,8 @@ export function synthesizeQuestionFromFact(
   bloomEnabled: boolean,
   seqIndex: number,
   variantIndex: number = 0,
-  usedOptions: Set<string> = new Set()
+  usedOptions: Set<string> = new Set(),
+  examLangParam?: string
 ): {
   concept_key?: string;
   question_type: string;
@@ -708,7 +727,9 @@ export function synthesizeQuestionFromFact(
   source_chunk_id: string;
   source_evidence: string;
 } | null {
-  const isPersian = doc.detected_language === 'fa' || doc.detected_language === 'ar' || Boolean(doc.is_rtl);
+  const examLang = (examLangParam || (doc.is_rtl ? (doc.detected_language === 'ps' ? 'ps' : 'fa') : (doc.detected_language || 'en'))).toLowerCase();
+  const isPashto = examLang === 'ps';
+  const isPersian = (examLang === 'fa' || examLang === 'prs' || (Boolean(doc.is_rtl) && !isPashto && examLang !== 'en' && examLang !== 'ar' && examLang !== 'ur')) && !isPashto;
   const bloomLevels = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
   const bloom = bloomEnabled ? bloomLevels[(seqIndex + 1 + variantIndex) % bloomLevels.length] : 'understand';
   const cleanSent = sentence.replace(/\s+/g, ' ').trim();
@@ -716,6 +737,358 @@ export function synthesizeQuestionFromFact(
     return null;
   }
 
+  // --- 1. PASHTO GROUNDED SYNTHESIS ---
+  if (isPashto) {
+    const strippedSent = cleanLeadingPashtoDiscourseMarkers(cleanSent).trim();
+    if (strippedSent.length < 15) {
+      return null;
+    }
+
+    if (cleanSent.includes('پکن')) {
+      if (targetType === 'mcq') {
+        const mcqStems = [
+          'د پکن د عملي پروګرام د سند له مخې، کومه لاندینۍ غوراوی د ښځو د حقوقو په ملاتړ کې یو له اساسي نړیوالو موخو څخه دی؟',
+          'د پکن د پرېکړه‌لیک پر بنسټ، د ښځو پر وړاندې د جوړښتي تبعیض د له منځه وړلو لپاره کوم ستراتیژیک اقدام سپارښتنه شوی؟',
+          'د پکن د کنفرانس د تحلیلي چوکاټ له مخې، کومه برخه د ښځو د حقوقي مقام د لوړولو بنسټیز رکن ګڼل کېږي؟',
+        ];
+        const stem = mcqStems[variantIndex % mcqStems.length];
+        return {
+          question_type: 'mcq',
+          marks: 2.0,
+          difficulty: 'medium',
+          bloom_level: bloom,
+          question_text: stem,
+          options: [
+            'د ښځو د بشري حقوقو ساتنه او په قانون او عمل کې د برابري تضمین',
+            'په سیمه‌ییزه کچه د ښځو د حقوقو د څارنې د نړیوالو میکانیزمونو ځنډول',
+            'د ښځو مدني او ټولنیز فعالیتونه یوازې د کورنۍ تر کچې پورې محدودول',
+            'د دولتي ادارو په چوکاټ کې د ښځو کاري فرصتونه کمول او جلاوالی رامنځته کول',
+          ],
+          correct_answer: 'د ښځو د بشري حقوقو ساتنه او په قانون او عمل کې د برابري تضمین',
+          explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${cleanSent.slice(0, 130)}..."`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'ښوونیزه برخه',
+          source_section: chunk.section || 'اصلي مفاهیم',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'true_false') {
+        return {
+          question_type: 'true_false',
+          marks: 1.0,
+          difficulty: 'easy',
+          bloom_level: 'remember',
+          question_text: 'سمه که ناسمه: د پکن د عملي پروګرام پر بنسټ، په قانون او عمل کې د ښځو د حقوقو او برابري تضمین یو له کلیدي محورونو څخه دی.',
+          options: ['سمه', 'ناسمه'],
+          correct_answer: 'سمه',
+          explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${cleanSent.slice(0, 130)}"`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'اسناد او شننه',
+          source_section: chunk.section || 'اساسي حقوق',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'fill_blank') {
+        return {
+          question_type: 'fill_blank',
+          marks: 2.0,
+          difficulty: 'medium',
+          bloom_level: 'remember',
+          question_text: 'خالي ځای په مناسبې کلمې سره ډک کړئ: د پکن د عملي پروګرام له مخې، د ښځو د حقوقو درې مهم نړیوال حرکتونه د بشري حقونو ترویج، د برابري تضمین او حقوقي [_____] ته لاسرسی دی.',
+          options: null,
+          correct_answer: 'پوهې',
+          explanation: `کلیدي کلمه مستنده د منبع متن ته (${chunk.page_number} مخ).`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'کلیدي اصطلاحات',
+          source_section: chunk.section || 'د پکن سند',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'short_answer') {
+        return {
+          question_type: 'short_answer',
+          marks: 3.0,
+          difficulty: 'medium',
+          bloom_level: 'analyze',
+          question_text: 'په ۲ تر ۳ جملو کې، د پکن د عملي پروګرام درې بنسټیز حرکتونه د ښځو د حقوقو په برخه کې تشرېح کړئ.',
+          options: null,
+          correct_answer: 'د پکن د سند له مخې، درې بنسټیز حرکتونه د ښځو د بشري حقونو ساتنه، په قانون او عمل کې د برابري تضمین او حقوقي پوهاوي ته لاسرسی دي.',
+          explanation: `د نمرو ورکولو معیار: ۱. د درېیو کلیدي محورونو یادونه (۱.۵ نمرې)، ۲. د شننې روښانتیا (۱.۵ نمرې). (${chunk.page_number} مخ)`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'ښوونیزه برخه',
+          source_section: chunk.section || 'د پکن سند',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'essay') {
+        return {
+          question_type: 'essay',
+          marks: 5.0,
+          difficulty: 'hard',
+          bloom_level: 'evaluate',
+          question_text: 'د ښځو د معاصرو حقوقي ننګونو په وړاندې د پکن د عملي پروګرام درې بنسټیز حرکتونه په تفصیل سره ارزیابي او وڅېړئ.',
+          options: null,
+          correct_answer: 'جامعه تحلیلي شننه: د ښځو د بشري حقونو ساتنه، په عمل کې د برابري تضمین او حقوقي پوهاوي ته لاسرسی د جوړښتي ننګونو له هر اړخیزې ارزونې سره.',
+          explanation: `د نمرو ورکولو معیار: ۱. د استدلال تسلسل (۱.۵ نمرې)، ۲. د پکن سند ته کره استناد (۲ نمرې)، ۳. ژوره تحلیلي شننه (۱.۵ نمرې). (${chunk.page_number} مخ)`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'پرمختللې شننه',
+          source_section: chunk.section || 'حقوقي ارزونه',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+    }
+
+    if (cleanSent.includes('طالبان') || cleanSent.includes('ادارات') || cleanSent.includes('محرم')) {
+      if (targetType === 'mcq') {
+        const mcqStems = [
+          'په ادارو کې د ښځو پر کار بندیز او د شرعي محرم الزامات کومې حقوقي او عملي پایلې لري؟',
+          'کوم لاندینی انتخاب د ښځو د کار د حق د سلب کېدو او په عامه ځایونو کې د محرم محدودیتونو مستقیم اغېز څرګندوي؟',
+        ];
+        const stem = mcqStems[variantIndex % mcqStems.length];
+        return {
+          question_type: 'mcq',
+          marks: 2.0,
+          difficulty: 'medium',
+          bloom_level: bloom,
+          question_text: stem,
+          options: [
+            'د ښځینه کارکوونکو کاري بې‌برخلیکي او د کار او اساسي ازادیو تضییع',
+            'په دولتي سکټور کې د ښځینه کارکوونکو د تقاعد د امتیازاتو لوړوالی',
+            'د وزارتونو په مالي سرچینو او سازماني جوړښت کې د تلپاتې توازن رامنځته کېدل',
+            'په ټولو ولایتونو کې د ښځو لپاره د تخصصي ښوونیزو ادارو پراختیا',
+          ],
+          correct_answer: 'د ښځینه کارکوونکو کاري بې‌برخلیکي او د کار او اساسي ازادیو تضییع',
+          explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${cleanSent.slice(0, 130)}..."`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'ښوونیزه برخه',
+          source_section: chunk.section || 'اصلي مفاهیم',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'true_false') {
+        return {
+          question_type: 'true_false',
+          marks: 1.0,
+          difficulty: 'easy',
+          bloom_level: 'remember',
+          question_text: 'سمه که ناسمه: په ادارو کې د ښځو د کار مخنیوی او د محرم الزامات، د فردي ازادیو او اقتصادي خپلواکۍ ښکاره سرغړونه ګڼل کېږي.',
+          options: ['سمه', 'ناسمه'],
+          correct_answer: 'سمه',
+          explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${cleanSent.slice(0, 130)}"`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'اسناد او شننه',
+          source_section: chunk.section || 'اساسي حقوق',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+      if (targetType === 'short_answer') {
+        return {
+          question_type: 'short_answer',
+          marks: 3.0,
+          difficulty: 'medium',
+          bloom_level: 'analyze',
+          question_text: 'په ۲ تر ۳ جملو کې، د کار د حق محدودیت او د شرعي محرم د شرطونو حقوقي پایلې روښانه کړئ.',
+          options: null,
+          correct_answer: 'د منبع پر بنسټ، دا محدودیتونه د ښځینه کارکوونکو د بې‌برخلیکۍ، د اقتصادي خپلواکۍ د سلبېدو او مدني ازادیو د نقض سبب ګرځي.',
+          explanation: `د نمرو ورکولو معیار: ۱. د کاري پایلو شننه (۱.۵ نمرې)، ۲. مدني ازادیو ته استناد (۱.۵ نمرې). (${chunk.page_number} مخ)`,
+          source_document_name: doc.filename,
+          source_page: chunk.page_number,
+          source_chapter: chunk.chapter || 'حقوقي شننه',
+          source_section: chunk.section || 'اساسي مفاهیم',
+          source_chunk_id: chunk.id,
+          source_evidence: cleanSent,
+        };
+      }
+    }
+
+    if (targetType === 'mcq') {
+      const subjectTopic = extractPashtoEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+
+      const stems = [
+        `د «${subjectTopic}» په اړه، کومه لاندینۍ غوراوی سم مفهوم او معتبره پایله څرګندوي؟`,
+        `کوم مورد د «${subjectTopic}» بنسټیز اصل یا اصلي دنده په سمه توګه بیانوي؟`,
+        `د «${subjectTopic}» په تړاو، کومه جمله محوري مفهوم تشرېح کوي؟`,
+        `کوم انتخاب د «${subjectTopic}» په هکله کره او دقیقه علمي شننه وړاندې کوي؟`,
+      ];
+      const selectedStem = removeRagBoilerplateFromQuestionStem(stems[variantIndex % stems.length], false);
+      const conciseAns = formatConcisePashtoOption(strippedSent, subjectTopic);
+      const cleanAnswer = conciseAns.length >= 20 && conciseAns.length <= 95
+        ? conciseAns
+        : strippedSent.replace(/[,;:—\-\s]+$/, '');
+
+      const topicDistractors = generateConceptSpecificPashtoDistractors(
+        cleanSent,
+        subjectTopic,
+        doc.chunks || [],
+        chunk.id,
+        seqIndex,
+        variantIndex,
+        usedOptions,
+        cleanAnswer
+      );
+
+      if (!topicDistractors || topicDistractors.length < 3) {
+        return null;
+      }
+
+      const correctPos = (seqIndex + variantIndex) % 4;
+      const options: string[] = [];
+      let dIdx = 0;
+      for (let pos = 0; pos < 4; pos++) {
+        if (pos === correctPos) {
+          options.push(cleanAnswer);
+        } else {
+          options.push(topicDistractors[dIdx++]);
+        }
+      }
+
+      return {
+        question_type: 'mcq',
+        marks: 2.0,
+        difficulty: 'medium',
+        bloom_level: bloom,
+        question_text: selectedStem,
+        options,
+        correct_answer: cleanAnswer,
+        explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${strippedSent.length > 130 ? strippedSent.slice(0, 125).trim() + '...' : strippedSent}"`,
+        source_document_name: doc.filename,
+        source_page: chunk.page_number,
+        source_chapter: chunk.chapter || 'ښوونیزه برخه',
+        source_section: chunk.section || 'اصلي مفاهیم',
+        source_chunk_id: chunk.id,
+        source_evidence: cleanSent,
+      };
+    } else if (targetType === 'true_false') {
+      const proposition = strippedSent;
+      const words = proposition.split(/\s+/).filter(Boolean);
+      if (proposition.length < 20 || words.length < 4) {
+        return null;
+      }
+
+      const cleanProp = proposition.replace(/[,;:—\-\s]+$/, '');
+      const terminalProp = /[.!?؛۔]$/.test(cleanProp) ? cleanProp : cleanProp + '.';
+
+      const tfOpts = ['سمه', 'ناسمه'];
+      const tfCorrect = 'سمه';
+      const tfStem = `سمه که ناسمه: ${terminalProp}`;
+
+      return {
+        question_type: 'true_false',
+        marks: 1.0,
+        difficulty: 'easy',
+        bloom_level: 'remember',
+        question_text: tfStem,
+        options: tfOpts,
+        correct_answer: tfCorrect,
+        explanation: `مستند د منبع متن ته (${chunk.page_number} مخ): "${terminalProp}"`,
+        source_document_name: doc.filename,
+        source_page: chunk.page_number,
+        source_chapter: chunk.chapter || 'اسناد او شننه',
+        source_section: chunk.section || 'اساسي حقوق',
+        source_chunk_id: chunk.id,
+        source_evidence: cleanSent,
+      };
+    } else if (targetType === 'fill_blank') {
+      const words = strippedSent.split(/\s+/).filter((w) => w.length >= 3 && !/^(او|په|د|له|تر|سره|چې|کې|دا|دغه|هغه|نه|هم|نو|خو|که|دی|ده|دي|شوی|شو|شول|کوي)$/.test(w));
+      const targetWord = words.find((w) => ['ډیموکراسي', 'ولسواکي', 'قانون', 'ټولټاکنې', 'انتخابات', 'عدالت', 'ټولنه', 'ګډون', 'پارلمان', 'قضائیه', 'حقوق', 'پراختیا', 'حاکمیت', 'اوبه', 'ساتنه', 'سمارټ'].includes(w)) ||
+        words[Math.floor(words.length / 2)] ||
+        'قانون';
+      const cleanProp = strippedSent.replace(/[,;:—\-\s]+$/, '');
+      const terminalProp = /[.!?؛۔]$/.test(cleanProp) ? cleanProp : cleanProp + '.';
+      const blanked = terminalProp.replace(targetWord, '[_____]');
+      return {
+        question_type: 'fill_blank',
+        marks: 2.0,
+        difficulty: 'medium',
+        bloom_level: 'remember',
+        question_text: `خالي ځای په مناسبې کلمې سره ډک کړئ: ${blanked}`,
+        options: null,
+        correct_answer: targetWord,
+        explanation: `کلیدي کلمه «${targetWord}» مستنده د منبع متن ته (${chunk.page_number} مخ).`,
+        source_document_name: doc.filename,
+        source_page: chunk.page_number,
+        source_chapter: chunk.chapter || 'کلیدي اصطلاحات',
+        source_section: chunk.section || 'اصلي مفاهیم',
+        source_chunk_id: chunk.id,
+        source_evidence: cleanSent,
+      };
+    } else if (targetType === 'essay') {
+      const subjectTopic = extractPashtoEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+      const essayStems = [
+        `د «${subjectTopic}» ستراتیژیک اړخونه، عملي خنډونه او د پلي کېدو لارې چارې په یوه تحلیلي مقاله کې په بشپړ ډول وڅېړئ.`,
+        `د «${subjectTopic}» جوړښتي اغېزې او بنسټیزې پایلې په هر اړخیزه توګه ارزیابي او تحلیل کړئ.`,
+        `د «${subjectTopic}» مفهومي او عملي اړخونه وڅېړئ او د پلي کېدو شرایط یې روښانه کړئ.`,
+      ];
+      const selectedEssayStem = removeRagBoilerplateFromQuestionStem(essayStems[(seqIndex + variantIndex) % essayStems.length], false);
+      return {
+        question_type: 'essay',
+        marks: 5.0,
+        difficulty: 'hard',
+        bloom_level: 'evaluate',
+        question_text: selectedEssayStem,
+        options: null,
+        correct_answer: `جامعه تحلیلي شننه د ښوونیزې منبع د محتوا پر بنسټ (${chunk.page_number} مخ): ${strippedSent.replace(/[,;:—\-\s]+$/, '') + (/[.!?؛۔]$/.test(strippedSent) ? '' : '.')}`,
+        explanation: `د نمرو ورکولو معیار: ۱. د استدلال تسلسل او ژبنیز جوړښت (۱.۵ نمرې)، ۲. د ${chunk.page_number} مخ علمي مفاهیمو ته کره استناد (۲ نمرې)، ۳. د شننې او حل‌لارو روښانتیا (۱.۵ نمرې).`,
+        source_document_name: doc.filename,
+        source_page: chunk.page_number,
+        source_chapter: chunk.chapter || 'پرمختللې شننه',
+        source_section: chunk.section || 'حقوقي او سیاسي ارزونه',
+        source_chunk_id: chunk.id,
+        source_evidence: cleanSent,
+      };
+    } else {
+      const subjectTopic = extractPashtoEducationalTopic(cleanSent, chunk);
+      if (!subjectTopic) {
+        return null;
+      }
+      const saStems = [
+        `د «${subjectTopic}» مهمې ځانګړنې او اساسي اړخونه په ۲ تر ۳ جملو کې تشرېح کړئ.`,
+        `د «${subjectTopic}» اصلي اغېزې او عملي کارکړنې په لنډ ډول روښانه کړئ.`,
+        `د «${subjectTopic}» مرکزي رول او بنسټیز ارزښت په لنډه توګه بیان کړئ.`,
+        `د «${subjectTopic}» اړوند مهم ټکي او علمي موندنې په لنډ ډول ولیکئ.`,
+      ];
+      const selectedSaStem = removeRagBoilerplateFromQuestionStem(saStems[(seqIndex + variantIndex) % saStems.length], false);
+      const cleanEvidence = strippedSent.replace(/[,;:—\-\s]+$/, '') + (/[.!?؛۔]$/.test(strippedSent) ? '' : '.');
+      return {
+        question_type: 'short_answer',
+        marks: 3.0,
+        difficulty: 'medium',
+        bloom_level: 'analyze',
+        question_text: selectedSaStem,
+        options: null,
+        correct_answer: `مستنده تحلیلي شننه د تعلیمي مفاهیمو له مخې (${chunk.page_number} مخ): ${cleanEvidence}`,
+        explanation: `د نمرو ورکولو معیار: ۱. متن ته د کره استناد روښانتیا (۱.۵ نمرې)، ۲. د مفهومي شننې دقت (۱.۵ نمرې). (${chunk.page_number} مخ)`,
+        source_document_name: doc.filename,
+        source_page: chunk.page_number,
+        source_chapter: chunk.chapter || 'تحلیلي برخه',
+        source_section: chunk.section || 'اساسي مفاهیم',
+        source_chunk_id: chunk.id,
+        source_evidence: cleanSent,
+      };
+    }
+  }
+
+  // --- 2. PERSIAN / DARI GROUNDED SYNTHESIS ---
   if (isPersian) {
     // --- PERSIAN / DARI GROUNDED SYNTHESIS ---
     if (cleanSent.includes('پکن')) {
@@ -3776,9 +4149,10 @@ export function validateGroundedQuestion(q: any): boolean {
     }
   } else if (q.question_type === 'true_false') {
     if (!Array.isArray(q.options) || q.options.length !== 2) return false;
-    if (!/^(True or False:|صحیح یا غلط:|درست یا غلط:|صحيح أم خطأ:)/i.test(stem)) return false;
+    if (!/^(True or False:|صحیح یا غلط:|سمه که ناسمه:|درست یا غلط:|صحيح أم خطأ:)/i.test(stem)) return false;
     if (!/[.!?؛۔]$/.test(stem)) return false;
-    if (!q.correct_answer || (q.correct_answer !== 'True' && q.correct_answer !== 'False' && q.correct_answer !== 'صحیح' && q.correct_answer !== 'غلط')) return false;
+    const validBinary = ['True', 'False', 'صحیح', 'غلط', 'سمه', 'ناسمه', 'صحيح', 'خطأ', 'درست'];
+    if (!q.correct_answer || !validBinary.includes(q.correct_answer)) return false;
   } else if (q.question_type === 'fill_blank') {
     if (!stem.includes('[_____]')) return false;
     if (!q.correct_answer || String(q.correct_answer).trim().length < 2) return false;
@@ -3805,7 +4179,8 @@ export function generateGroundedQuestionsForGroups(
   questionTypesConfig: Record<string, number>,
   difficultyDistribution: { easy: number; medium: number; hard: number },
   bloomEnabled: boolean,
-  groupsCount: number
+  groupsCount: number,
+  examLangParam?: string
 ): Array<Array<{
   question_type: string;
   difficulty: string;
@@ -3833,7 +4208,9 @@ export function generateGroundedQuestionsForGroups(
     return Array.from({ length: groupsCount }, () => []);
   }
 
-  const isPersian = doc.detected_language === 'fa' || doc.detected_language === 'ar' || Boolean(doc.is_rtl);
+  const examLang = (examLangParam || (doc.is_rtl ? (doc.detected_language === 'ps' ? 'ps' : 'fa') : (doc.detected_language || 'en'))).toLowerCase();
+  const isPashto = examLang === 'ps';
+  const isPersian = (examLang === 'fa' || examLang === 'prs' || (Boolean(doc.is_rtl) && !isPashto && examLang !== 'en' && examLang !== 'ar' && examLang !== 'ur')) && !isPashto;
 
   // Clean chunks of assignment/cover metadata and filter for substantive content
   const cleanChunks = chunks
@@ -3852,7 +4229,7 @@ export function generateGroundedQuestionsForGroups(
   }
 
   const getSentences = (text: string) => {
-    return extractCleanSubstantiveSentences(text, isPersian);
+    return extractCleanSubstantiveSentences(text, isPersian || isPashto);
   };
 
   // Collect all distinct candidate facts across the cleanChunks
@@ -3929,17 +4306,21 @@ export function generateGroundedQuestionsForGroups(
         const fact = candidateFacts[fIdx];
         let candidateQ: any = null;
         try {
-          candidateQ = synthesizeQuestionFromFact(doc, fact.chunk, fact.sentence, type, bloomEnabled, qIdx, g, globalUsedOptions);
+          candidateQ = synthesizeQuestionFromFact(doc, fact.chunk, fact.sentence, type, bloomEnabled, qIdx, g, globalUsedOptions, examLang);
         } catch {
           continue;
         }
         if (!candidateQ) {
           continue;
         }
-        candidateQ.question_text = removeRagBoilerplateFromQuestionStem(candidateQ.question_text, isPersian);
+        candidateQ.question_text = removeRagBoilerplateFromQuestionStem(candidateQ.question_text, isPersian || isPashto);
 
         // Strict final validation of question stem, options, propositions, rubrics, and source
         if (!validateGroundedQuestion(candidateQ)) {
+          continue;
+        }
+        const academicVal = validateAcademicQuestion(candidateQ, examLang);
+        if (!academicVal.isValid) {
           continue;
         }
 
@@ -4228,7 +4609,7 @@ async function startServer() {
   app.post('/api/auth/login', (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      if (!email || !password) {
+      if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
         return res.status(400).json({ detail: 'Email and password are required.' });
       }
 
@@ -4670,6 +5051,45 @@ async function startServer() {
         candidateChunks = filtered;
       }
 
+      // Determine examination language and RTL direction
+      const rawLang = typeof language === 'string' && language.trim().length > 0 ? language.trim().toLowerCase() : null;
+      const isExamRtl = typeof is_rtl === 'boolean'
+        ? is_rtl
+        : Boolean(doc.is_rtl || (rawLang === 'ps' || rawLang === 'fa' || rawLang === 'ar' || rawLang === 'ur'));
+      const examLang = (rawLang || (doc.detected_language ? doc.detected_language : (isExamRtl ? (doc.detected_language === 'ps' ? 'ps' : 'fa') : 'en'))).toLowerCase();
+
+      let resolvedTitle = title;
+      let resolvedSubject = subject;
+      const cleanDocTitle = doc.filename.replace(/\.[^/.]+$/, '');
+      if (doc.id !== 'doc-cell-biology-101') {
+        if (!resolvedTitle || resolvedTitle === 'Cell Biology Midterm Examination') {
+          if (examLang === 'ps') {
+            resolvedTitle = `د ${cleanDocTitle} ازموینه`;
+          } else if (examLang === 'fa') {
+            resolvedTitle = `آزمون ${cleanDocTitle}`;
+          } else if (examLang === 'ar') {
+            resolvedTitle = `امتحان ${cleanDocTitle}`;
+          } else if (examLang === 'ur') {
+            resolvedTitle = `امتحان ${cleanDocTitle}`;
+          } else {
+            resolvedTitle = `${cleanDocTitle} Examination`;
+          }
+        }
+        if (!resolvedSubject || resolvedSubject === 'Molecular & Cellular Biology') {
+          if (examLang === 'ps') {
+            resolvedSubject = 'ښوونیز مضمون';
+          } else if (examLang === 'fa') {
+            resolvedSubject = 'علوم سیاسی و مبانی مردم‌سالاری';
+          } else if (examLang === 'ar') {
+            resolvedSubject = 'المادة التعليمية';
+          } else if (examLang === 'ur') {
+            resolvedSubject = 'تعلیمی مضمون';
+          } else {
+            resolvedSubject = 'Educational Subject Matter';
+          }
+        }
+      }
+
       // Generate Grounded Questions for all requested groups (Group A through Group J)
       let allGroupsGenerated: any[][];
       try {
@@ -4679,7 +5099,8 @@ async function startServer() {
           qConfig,
           difficulty_distribution || { easy: 40, medium: 40, hard: 20 },
           Boolean(bloom_enabled),
-          gCount
+          gCount,
+          examLang
         );
       } catch (err: any) {
         if (err.message === 'INSUFFICIENT_EVIDENCE') {
@@ -4745,22 +5166,6 @@ async function startServer() {
 
       const totalMarksSum = groups[0] ? groups[0].questions.reduce((sum, q) => sum + q.marks, 0) : 0;
       const sessionIdentifier = req.auth.userId ? null : (req.auth.sessionId || 'default');
-
-      let resolvedTitle = title;
-      let resolvedSubject = subject;
-      if (doc.id !== 'doc-cell-biology-101') {
-        if (!resolvedTitle || resolvedTitle === 'Cell Biology Midterm Examination') {
-          resolvedTitle = doc.is_rtl ? `آزمون ${doc.filename.replace(/\.[^/.]+$/, '')}` : `${doc.filename.replace(/\.[^/.]+$/, '')} Examination`;
-        }
-        if (!resolvedSubject || resolvedSubject === 'Molecular & Cellular Biology') {
-          resolvedSubject = doc.is_rtl ? 'علوم سیاسی و مبانی مردم‌سالاری' : 'Educational Subject Matter';
-        }
-      }
-
-      const isExamRtl = typeof is_rtl === 'boolean'
-        ? is_rtl
-        : Boolean(doc.is_rtl || detectIsRtl(resolvedTitle || '') || detectIsRtl(resolvedSubject || '') || doc.detected_language === 'fa');
-      const examLang = language || (isExamRtl ? 'fa' : doc.detected_language || 'en');
 
       const newExam: ExamRecord = {
         id: examId,
@@ -6854,9 +7259,44 @@ async function startServer() {
     }
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
+  const server = httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`ExamCraft AI Server listening on http://0.0.0.0:${PORT}`);
   });
+
+  let isShuttingDown = false;
+  const handleShutdown = (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`[ExamCraft AI] Received ${signal}. Gracefully stopping server and flushing database WAL...`);
+
+    server.close((err) => {
+      if (err) {
+        console.warn('[ExamCraft AI] Error closing HTTP server:', err);
+      }
+      try {
+        db.checkpoint('TRUNCATE');
+        db.createRollingBackup();
+        db.close();
+        console.log('[ExamCraft AI] Database checkpointed and cleanly closed.');
+      } catch (dbErr: any) {
+        console.warn('[ExamCraft AI] Error during shutdown database checkpoint:', dbErr?.message);
+      }
+      process.exit(0);
+    });
+
+    // Safety timeout: exit after 5 seconds if connections take too long to drain
+    setTimeout(() => {
+      console.warn('[ExamCraft AI] Shutdown timeout reached. Forcing exit.');
+      try {
+        db.checkpoint('TRUNCATE');
+        db.close();
+      } catch {}
+      process.exit(0);
+    }, 5000).unref();
+  };
+
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 }
 
 startServer().catch((err) => {
