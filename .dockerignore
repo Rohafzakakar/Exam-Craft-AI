@@ -1,0 +1,48 @@
+# Dependencies & build outputs
+node_modules
+dist
+dist-ssr
+build
+
+# Version control & local tooling
+.git
+.gitignore
+.aistudio
+.vscode
+.idea
+.DS_Store
+bun.lock
+
+# Environment & secrets (keep .env.example available if needed)
+.env
+.env.*
+!.env.example
+*.local
+
+# Local SQLite databases, backups, and user uploads
+data
+/data
+uploads
+/uploads
+*.db
+*.db-*
+*-wal
+*-shm
+*.sqlite*
+examcraft.db*
+
+# Logs, temporary files, test suites & artifacts
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+scripts
+tests
+*.pdf
+*.png
+*.tar.gz
+*.tgz
+*.zip
+*.bak

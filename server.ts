@@ -64,6 +64,10 @@ import {
   isImperativeOrActionPhrase,
   isDanglingOrIncompleteFragment,
   isDocumentMetadataOrNav,
+  isNonSubstantiveOrAckSentence,
+  hasUnresolvedLeadingPronoun,
+  isVagueGenericPlatitude,
+  cleanDocumentContentForRag as cleanDocumentContentForRagCore,
   extractTopicRelevantDistractors,
   extractCleanSubstantiveSentences,
   removeRagBoilerplateFromQuestionStem,
@@ -97,6 +101,9 @@ export {
   formatConcisePashtoOption,
   generateConceptSpecificPersianDistractors,
   generateConceptSpecificPashtoDistractors,
+  isNonSubstantiveOrAckSentence,
+  hasUnresolvedLeadingPronoun,
+  isVagueGenericPlatitude,
   detectTextLanguage,
   validateQuestionLanguage,
   validateAcademicQuestion,
@@ -155,113 +162,7 @@ function decodeUtf8Filename(raw: string): string {
 }
 
 export function cleanDocumentContentForRag(rawText: string): { cleanedText: string; isOnlyMetadata: boolean; substantiveWordsCount: number } {
-  if (!rawText) return { cleanedText: '', isOnlyMetadata: true, substantiveWordsCount: 0 };
-
-  let text = decodeXmlEntities(String(rawText))
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\t/g, ' ')
-    .replace(/ـ+/g, '');
-
-  const lines = text.split('\n');
-  const filteredLines: string[] = [];
-
-  const metadataPatterns = [
-    /^\s*\d+\s*\|\s*P\s*a\s*g\s*e\s*$/i,
-    /^\s*Page\s+\d+(\s+of\s+\d+)?\s*$/i,
-    /^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/i,
-    /^\s*_{4,}\s*$/,
-    /^\s*={4,}\s*$/,
-    /^\s*-{4,}\s*$/,
-    /^\s*\*{4,}\s*$/,
-    /^\s*Assignment\s+\d+\s*[:：]?\s*.*$/i,
-    /^\s*Assignment\s*Title\s*[:：]\s*.*$/i,
-    /^\s*(for|in|of|and|with)\s+[A-Za-z0-9\s]+(Platforms|Assignment|Course|Report)\s*$/i,
-    /^\s*Instructor\s*[:：]\s*.*$/i,
-    /^\s*Professor\s*[:：]\s*.*$/i,
-    /^\s*Teacher\s*[:：]\s*.*$/i,
-    /^\s*Written\s*[:：]\s*.*$/i,
-    /^\s*Author\s*[:：]\s*.*$/i,
-    /^\s*Student\s*(Name)?\s*[:：]\s*.*$/i,
-    /^\s*Due\s*Date\s*[:：]\s*.*$/i,
-    /^\s*Submission\s*Date\s*[:：]\s*.*$/i,
-    /^\s*Roll\s*(No|Number)?\s*[:：]\s*.*$/i,
-    /^\s*Semester\s*[:：]\s*.*$/i,
-    /^\s*Course\s*(Code|Title)?\s*[:：]\s*.*$/i,
-    /^\s*Department\s*(of\s+.*)?\s*$/i,
-    /^\s*University\s*(of\s+.*)?\s*$/i,
-    /^\s*Title\s*[:：]\s*.*$/i,
-    /^\s*Subject\s*[:：]\s*.*$/i,
-    /^\s*(Sir|Prof\.?|Dr\.?)\s+[A-Za-z\s]+$/i,
-    /^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*$/,
-    // Dari / Persian / Arabic patterns (only key-value headers with colon)
-    /^\s*تهیه\s*کننده\s*[:：].*$/i,
-    /^\s*استاد(\s*راهنما)?\s*[:：].*$/i,
-    /^\s*دانشگاه\s*[:：]\s*.*$/i,
-    /^\s*دانشکده\s*[:：]\s*.*$/i,
-    /^\s*دیپارتمنت\s*[:：]\s*.*$/i,
-    /^\s*رشته\s*[:：]\s*.*$/i,
-    /^\s*مضمون\s*[:：]\s*.*$/i,
-    /^\s*صنف\s*[:：]\s*.*$/i,
-    /^\s*سال\s*[:：]\s*.*$/i,
-    /^\s*تاریخ\s*[:：]\s*.*$/i,
-    /^\s*شماره\s*(دانشجویی|محصل|چوکی)\s*[:：].*$/i,
-    /^\s*نمبر\s*تذکره\s*[:：].*$/i,
-    /^\s*(نویسنده|مؤلف|ارائه\s*دهنده|عنوان\s*تحقیق)\s*[:：].*$/i,
-  ];
-
-  const standaloneHeaderLabels = [
-    /^\s*(Instructor|Professor|Teacher|Written(\s*by)?|Author|Student(\s*Name)?|Title|Assignment(\s*Title)?|Due\s*Date|Submission\s*Date|Course|Subject)\s*[:：]?\s*$/i,
-    /^\s*(تهیه\s*کننده|استاد(\s*راهنما)?|دانشگاه|دانشکده|دیپارتمنت|رشته|مضمون|صنف|سال(\s*تحصیلی)?|تاریخ|نویسنده|مؤلف|عنوان(\s*تحقیق)?)\s*[:：]?\s*$/i,
-  ];
-
-  let skipNextNonEmpty = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    const line = rawLine.trim();
-    if (!line) {
-      filteredLines.push('');
-      continue;
-    }
-
-    if (skipNextNonEmpty) {
-      skipNextNonEmpty = false;
-      continue;
-    }
-
-    let isStandaloneLabel = false;
-    for (const pat of standaloneHeaderLabels) {
-      if (pat.test(line)) {
-        isStandaloneLabel = true;
-        skipNextNonEmpty = true;
-        break;
-      }
-    }
-    if (isStandaloneLabel) continue;
-
-    // Genuine educational sentences with punctuation or substantive length are never metadata
-    const isEducationalSentence = line.length > 60 || /[.!?؛۔]$/.test(line);
-
-    let isMeta = false;
-    if (!isEducationalSentence) {
-      for (const pat of metadataPatterns) {
-        if (pat.test(line)) {
-          isMeta = true;
-          break;
-        }
-      }
-    }
-    if (!isMeta) {
-      filteredLines.push(rawLine);
-    }
-  }
-
-  const cleaned = filteredLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  const substantiveWords = cleaned.split(/\s+/).filter((w) => w.length >= 2);
-  const isOnlyMetadata = substantiveWords.length < 8;
-
-  return { cleanedText: cleaned, isOnlyMetadata, substantiveWordsCount: substantiveWords.length };
+  return cleanDocumentContentForRagCore(rawText);
 }
 
 function prepareRtlForFontkit(str: string): string {
@@ -1056,7 +957,7 @@ export function synthesizeQuestionFromFact(
         source_chunk_id: chunk.id,
         source_evidence: cleanSent,
       };
-    } else {
+    } else if (targetType === 'short_answer') {
       const subjectTopic = extractPashtoEducationalTopic(cleanSent, chunk);
       if (!subjectTopic) {
         return null;
@@ -1086,6 +987,7 @@ export function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     }
+    return null;
   }
 
   // --- 2. PERSIAN / DARI GROUNDED SYNTHESIS ---
@@ -1470,7 +1372,7 @@ export function synthesizeQuestionFromFact(
         source_chunk_id: chunk.id,
         source_evidence: cleanSent,
       };
-    } else {
+    } else if (targetType === 'short_answer') {
       const subjectTopic = extractPersianEducationalTopic(cleanSent, chunk);
       if (!subjectTopic) {
         return null;
@@ -1500,6 +1402,7 @@ export function synthesizeQuestionFromFact(
         source_evidence: cleanSent,
       };
     }
+    return null;
   }
 
   // --- ENGLISH GROUNDED SYNTHESIS ---
@@ -3751,6 +3654,10 @@ export function synthesizeQuestionFromFact(
   }
 
   // E. GENERAL ARBITRARY DOCUMENT SENTENCE SYNTHESIS (FALLBACK)
+  if (!isPersian && (isNonSubstantiveOrAckSentence(cleanSent) || hasUnresolvedLeadingPronoun(cleanSent) || isVagueGenericPlatitude(cleanSent))) {
+    return null;
+  }
+
   const subjectTopic = isPersian
     ? extractPersianEducationalTopic(cleanSent, chunk)
     : extractEnglishEducationalTopic(cleanSent, chunk);
@@ -3846,6 +3753,17 @@ export function synthesizeQuestionFromFact(
     if (isImperativeOrActionPhrase(cleanSent) || isHeadingOrFragment(cleanSent) || isDanglingOrIncompleteFragment(cleanSent) || isDocumentMetadataOrNav(cleanSent)) {
       return null;
     }
+    if (!isPersian && (isNonSubstantiveOrAckSentence(cleanSent) || hasUnresolvedLeadingPronoun(cleanSent) || isVagueGenericPlatitude(cleanSent))) {
+      return null;
+    }
+    // Require a clear, testable proposition tied to a valid educational concept
+    const tfWordCount = cleanSent.split(/\s+/).length;
+    if (tfWordCount < 7 || tfWordCount > 36) {
+      return null;
+    }
+    if (!isPersian && (!subjectTopic || !isValidEducationalTopic(subjectTopic))) {
+      return null;
+    }
     // Reject author names, document titles, or page boundary fragments
     if (/\b(Hamza Safi|Madina Kakar|Household Water Conservation|From Smart Devices to Artificial Intelligence|Page safety)\b/i.test(cleanSent)) {
       return null;
@@ -3858,7 +3776,7 @@ export function synthesizeQuestionFromFact(
       return null;
     }
     // Reject author descriptions, bios, affiliations, credentials
-    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author|supervised\s+by|graduated\s+from)\b/i.test(cleanSent)) {
+    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author|supervised\s+by|graduated\s+from|submitted\s+to|partial\s+fulfillment)\b/i.test(cleanSent)) {
       return null;
     }
     // Reject sentences combining multiple statistics or survey claims into awkward propositions
@@ -3902,6 +3820,12 @@ export function synthesizeQuestionFromFact(
     if (isImperativeOrActionPhrase(cleanSent) || isHeadingOrFragment(cleanSent) || isDanglingOrIncompleteFragment(cleanSent) || isDocumentMetadataOrNav(cleanSent)) {
       return null;
     }
+    if (!isPersian && (isNonSubstantiveOrAckSentence(cleanSent) || hasUnresolvedLeadingPronoun(cleanSent) || isVagueGenericPlatitude(cleanSent))) {
+      return null;
+    }
+    if (!isPersian && /^(it|they|these|those|this|such|their|its)\b/i.test(cleanSent)) {
+      return null;
+    }
     // Reject author names, titles, or page boundary fragments
     if (/\b(Hamza Safi|Madina Kakar|Household Water Conservation|From Smart Devices to Artificial Intelligence|Page safety)\b/i.test(cleanSent)) {
       return null;
@@ -3911,24 +3835,21 @@ export function synthesizeQuestionFromFact(
     if (statMatches.length >= 2) {
       return null;
     }
-    // Sentence must be substantive and not ambiguous or truncated
-    if (cleanSent.length < 40 || cleanSent.split(/\s+/).length < 7) {
-      return null;
-    }
-    // Reject sentences starting with ambiguous pronouns without referent
-    if (/^(it|they|these|those|this|such|their|its)\b/i.test(cleanSent)) {
+    // Sentence must be substantive, bounded, and not ambiguous or truncated
+    const fbWordCount = cleanSent.split(/\s+/).length;
+    if (cleanSent.length < 40 || fbWordCount < 7 || fbWordCount > 32) {
       return null;
     }
     // Reject document tables or author descriptions
     if (/\b(table|figure|chart|diagram|box|exhibit)\s+([0-9]+|[ivxlcdm]+)\b/i.test(cleanSent) || /\|/.test(cleanSent)) {
       return null;
     }
-    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author)\b/i.test(cleanSent)) {
+    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author|supervised\s+by|graduated\s+from)\b/i.test(cleanSent)) {
       return null;
     }
 
     const sanitizedSent = sanitizeEducationalText(cleanSent);
-    const words = sanitizedSent.split(/\s+/);
+    const rawTokens = sanitizedSent.split(/\s+/);
     const stopWords = new Set([
       'according', 'because', 'however', 'therefore', 'through', 'between', 'during', 'should',
       'would', 'could', 'before', 'after', 'against', 'without', 'within', 'across', 'around',
@@ -3938,28 +3859,78 @@ export function synthesizeQuestionFromFact(
       'water', 'first', 'local', 'owner', 'total', 'large', 'small', 'state', 'point', 'makes', 'years', 'rates', 'means',
       'basis', 'level', 'study', 'needs', 'helps', 'works', 'shows', 'gives', 'takes', 'based', 'using', 'called', 'known',
       'great', 'early', 'later', 'order', 'right', 'place', 'every', 'other', 'whole', 'human', 'major', 'minor', 'daily',
-      'often', 'given', 'reach', 'comes', 'main', 'basic', 'simple', 'common'
+      'often', 'given', 'reach', 'comes', 'main', 'basic', 'simple', 'common',
+      // Weak generic verbs, participles, adjectives, and meta-nouns that create awkward blanks
+      'provides', 'provide', 'provided', 'enables', 'enable', 'enabled', 'allows', 'allow', 'allowed',
+      'designed', 'design', 'implemented', 'implement', 'created', 'create', 'developed', 'develop',
+      'generated', 'generate', 'stored', 'store', 'processed', 'process', 'performed', 'perform',
+      'required', 'require', 'requires', 'applied', 'apply', 'improved', 'improve', 'improves',
+      'reduced', 'reduce', 'reduces', 'increased', 'increase', 'increases', 'includes', 'include', 'including',
+      'contains', 'contain', 'supports', 'support', 'manages', 'manage', 'builds', 'build', 'makes', 'make',
+      'offers', 'offer', 'ensures', 'ensure', 'serves', 'serve', 'plays', 'remains', 'remain', 'becomes', 'become',
+      'causes', 'cause', 'leads', 'lead', 'helps', 'help', 'using', 'used', 'getting', 'making', 'taking', 'giving',
+      'important', 'essential', 'critical', 'primary', 'significant', 'different', 'various', 'multiple',
+      'specific', 'particular', 'general', 'overall', 'effective', 'existing', 'current', 'proper', 'suitable',
+      'useful', 'helpful', 'better', 'higher', 'lower', 'greater', 'smaller', 'system', 'systems', 'method',
+      'methods', 'approach', 'approaches', 'feature', 'features', 'project', 'insights', 'guidance', 'results',
+      'findings', 'people', 'users', 'today', 'world', 'always', 'usually', 'never', 'really', 'quite', 'rather',
     ]);
-    const substantiveWords = words
-      .map((w) => w.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, ''))
-      .filter((w) => w.length >= 5 && !stopWords.has(w.toLowerCase()) && !/^\d+$/.test(w));
+    const adverbNounExceptions = new Set(['supply', 'assembly', 'anomaly', 'monopoly', 'family']);
 
-    // Exclude the first word of the sentence to avoid awkward fill-ins
-    const firstWordClean = words[0]?.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '').toLowerCase();
-    const candidateWords = substantiveWords.filter((w) => {
-      if (w.toLowerCase() === firstWordClean) return false;
-      const count = (sanitizedSent.match(new RegExp(`\\b${w}\\b`, 'gi')) || []).length;
-      return count === 1;
-    });
+    const firstWordClean = rawTokens[0]?.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '').toLowerCase();
+    const candidateEntries: Array<{ word: string; score: number }> = [];
 
-    if (candidateWords.length === 0) {
+    for (let idx = 1; idx < rawTokens.length; idx++) {
+      const rawTok = rawTokens[idx];
+      // Do not blank words containing hyphens, slashes, apostrophes, or inside parentheses
+      const outerStripped = rawTok.replace(/^[,.;:!?"]+|[,.;:!?"]+$/g, '');
+      if (/[-/'’()\[\]]/.test(outerStripped)) continue;
+
+      const cleanWord = rawTok.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '');
+      if (cleanWord.length < 5 || !/^[a-zA-Z]+$/.test(cleanWord)) continue;
+
+      const lower = cleanWord.toLowerCase();
+      if (lower === firstWordClean || stopWords.has(lower)) continue;
+
+      // Avoid awkward "an [_____]" grammatical mismatch
+      const prevClean = rawTokens[idx - 1]?.replace(/[^a-zA-Z]/g, '').toLowerCase();
+      if (prevClean === 'an' || prevClean === 'a') {
+        if (prevClean === 'an') continue;
+      }
+
+      // Skip adverbs ending in -ly (e.g., "effectively", "continuously")
+      if (lower.endsWith('ly') && !adverbNounExceptions.has(lower)) continue;
+
+      // Skip gerunds/participles ending in -ing or -ed unless established domain nouns (e.g., "harvesting", "monitoring")
+      const isEstablishedGerundNoun = /(ing)$/.test(lower) && /\b(harvesting|monitoring|sensing|mulching|recycling|computing|routing|caching|hashing|indexing|filtering|scheduling|encryption|learning)\b/i.test(lower);
+      if ((lower.endsWith('ing') && !isEstablishedGerundNoun) || lower.endsWith('ed')) continue;
+
+      const exactCount = (sanitizedSent.match(new RegExp(`\\b${cleanWord}\\b`, 'gi')) || []).length;
+      if (exactCount !== 1) continue;
+
+      // Score domain nouns/technical terms higher than generic words
+      let score = cleanWord.length;
+      if (/(tion|sion|ment|ity|ism|ology|sis|ware|meter|sensor|graph|scope|lysis|thesis|ance|ence|grid|node|cache|index|model|layer)$/i.test(lower)) {
+        score += 10;
+      } else if (/^[A-Z]/.test(cleanWord)) {
+        score += 4;
+      }
+      candidateEntries.push({ word: cleanWord, score });
+    }
+
+    if (candidateEntries.length === 0) {
       return null;
     }
 
-    // Prefer substantive technical terms
-    const targetWord = candidateWords[variantIndex % candidateWords.length];
+    candidateEntries.sort((a, b) => b.score - a.score);
+    const topPool = candidateEntries.slice(0, Math.min(3, candidateEntries.length));
+    const targetWord = topPool[variantIndex % topPool.length].word;
 
     const cloze = sanitizedSent.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '[_____]');
+    if ((cloze.match(/\[_____\]/g) || []).length !== 1 || /-\[_____\]|\[_____\]-|\[_____\]['’]s/i.test(cloze)) {
+      return null;
+    }
+
     return {
       question_type: 'fill_blank',
       marks: 2.0,
@@ -3980,11 +3951,14 @@ export function synthesizeQuestionFromFact(
 
   if (targetType === 'short_answer') {
     if (!subjectTopic || !isValidEducationalTopic(subjectTopic)) return null;
+    if (!isPersian && (isNonSubstantiveOrAckSentence(cleanSent) || hasUnresolvedLeadingPronoun(cleanSent) || isVagueGenericPlatitude(cleanSent))) {
+      return null;
+    }
     if (cleanSent.split(/\s+/).length < 8) return null;
     if (/\b(table|figure|chart|diagram|box|exhibit)\s+([0-9]+|[ivxlcdm]+)\b/i.test(cleanSent) || /\|/.test(cleanSent)) {
       return null;
     }
-    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author)\b/i.test(cleanSent)) {
+    if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author|supervised\s+by|graduated\s+from)\b/i.test(cleanSent)) {
       return null;
     }
 
@@ -3992,7 +3966,9 @@ export function synthesizeQuestionFromFact(
     const capitalizedTopic = cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
 
     const isEnvironmentalOrContext = /\b(drought|groundwater|water table|scarcity|depletion|stress|shortage|climate change|aquifer|arid|precipitation|rainfall|kabul)\b/i.test(capitalizedTopic);
-    const isMethodOrPractice = /\b(conservation|management|habit|harvesting|irrigation|mulch|mulching|recycling|reuse|strategy|implementation|repair)\b/i.test(capitalizedTopic);
+    const isMethodOrPractice = /\b(conservation|management|habit|harvesting|irrigation|mulch|mulching|recycling|reuse|strategy|implementation|repair|methodology|technique|practice)\b/i.test(capitalizedTopic);
+    const isPersonOrHistoricalEntity = /\b(al-shifa|layla|hafsa|prophet|caliph|scholar|scientist|author|researcher|historian|physician|educator|pioneer|founder)\b/i.test(capitalizedTopic);
+    const isSystemOrTechnicalTopic = /\b(system|systems|sensor|sensors|meter|meters|device|devices|network|networks|software|database|server|algorithm|architecture|protocol|framework|platform|application|interface|controller|module|hardware|storage|encryption|authentication|monitoring|automation|pipeline|transducer|pump|valve|filter|actuator|twin)\b/i.test(capitalizedTopic);
 
     // Only append "systems" to standalone device nouns (e.g. "Sensor" -> "Sensor systems"), never to geographical or environmental concepts
     const isHardwareDevice = /\b(meter|sensor|transducer|controller|twin|pump|valve|filter|actuator)\b/i.test(capitalizedTopic) &&
@@ -4010,13 +3986,24 @@ export function synthesizeQuestionFromFact(
       saStems = [
         `Based on the source text, explain the methodology and practical role of ${topicPhrase}.`,
         `According to the reading, concisely summarize how ${topicPhrase} supports efficiency and conservation objectives.`,
-        `Explain the primary operational factors governing ${topicPhrase} as documented in the reading.`,
+        `Explain the key implementation principles governing ${topicPhrase} as documented in the reading.`,
       ];
-    } else {
+    } else if (isPersonOrHistoricalEntity) {
+      saStems = [
+        `Based on the source text, explain the documented historical contributions and significance of ${topicPhrase}.`,
+        `According to the reading, concisely summarize the key educational or intellectual role of ${topicPhrase}.`,
+      ];
+    } else if (isSystemOrTechnicalTopic) {
       saStems = [
         `Based on the source text, explain the operational role and primary function of ${topicPhrase}.`,
         `According to the reading, concisely summarize how ${topicPhrase} operates and contributes to system efficiency.`,
         `Explain the key operating principles governing ${topicPhrase} as documented in the source.`,
+      ];
+    } else {
+      saStems = [
+        `Based on the source text, explain the key characteristics and functional significance of ${topicPhrase}.`,
+        `According to the reading, concisely summarize the core principles associated with ${topicPhrase}.`,
+        `Explain how ${topicPhrase} functions and contributes to the outcomes documented in the source.`,
       ];
     }
     const qStem = saStems[(seqIndex * 2 + variantIndex) % saStems.length];
@@ -4029,7 +4016,7 @@ export function synthesizeQuestionFromFact(
       question_text: qStem,
       options: null,
       correct_answer: `According to the source text (Page ${chunk.page_number}): ${cleanEvidenceAns}`,
-      explanation: `Scoring Rubric: (1) Identifies key concept and mechanism from Page ${chunk.page_number} (1.5 pts); (2) Explains practical/operational significance directly supported by the text (1.5 pts).`,
+      explanation: `Scoring Rubric: (1) Identifies key concept and mechanism from Page ${chunk.page_number} (1.5 pts); (2) Explains practical significance directly supported by the text (1.5 pts).`,
       source_document_name: doc.filename,
       source_page: chunk.page_number,
       source_chapter: chunk.chapter && !isHeadingOrTitleLabel(chunk.chapter) ? chunk.chapter : (isPersian ? 'فصل اول: مفاهیم اساسی' : 'Chapter 1: Overview and Core Concepts'),
@@ -4039,13 +4026,20 @@ export function synthesizeQuestionFromFact(
     };
   }
 
+  if (targetType !== 'essay') {
+    return null;
+  }
+
   // Essay
   if (!subjectTopic || !isValidEducationalTopic(subjectTopic)) return null;
+  if (!isPersian && (isNonSubstantiveOrAckSentence(cleanSent) || hasUnresolvedLeadingPronoun(cleanSent) || isVagueGenericPlatitude(cleanSent))) {
+    return null;
+  }
   if (cleanSent.split(/\s+/).length < 12) return null;
   if (/\b(table|figure|chart|diagram|box|exhibit)\s+([0-9]+|[ivxlcdm]+)\b/i.test(cleanSent) || /\|/.test(cleanSent)) {
     return null;
   }
-  if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author)\b/i.test(cleanSent)) {
+  if (/\b(about\s+the\s+author|author\s+bio|biography|acknowledg|department\s+of|faculty\s+of|university|lecturer|professor|co-author|supervised\s+by|graduated\s+from)\b/i.test(cleanSent)) {
     return null;
   }
 
@@ -4053,7 +4047,8 @@ export function synthesizeQuestionFromFact(
   const capitalizedTopic = cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
 
   const isEnvironmentalOrContext = /\b(drought|groundwater|water table|scarcity|depletion|stress|shortage|climate change|aquifer|arid|precipitation|rainfall|kabul)\b/i.test(capitalizedTopic);
-  const isMethodOrPractice = /\b(conservation|management|habit|harvesting|irrigation|mulch|mulching|recycling|reuse|strategy|implementation|repair)\b/i.test(capitalizedTopic);
+  const isMethodOrPractice = /\b(conservation|management|habit|harvesting|irrigation|mulch|mulching|recycling|reuse|strategy|implementation|repair|methodology|technique|practice)\b/i.test(capitalizedTopic);
+  const isSystemOrTechnicalTopic = /\b(system|systems|sensor|sensors|meter|meters|device|devices|network|networks|software|database|server|algorithm|architecture|protocol|framework|platform|application|interface|controller|module|hardware|storage|encryption|authentication|monitoring|automation|pipeline|transducer|pump|valve|filter|actuator|twin)\b/i.test(capitalizedTopic);
 
   const isHardwareDevice = /\b(meter|sensor|transducer|controller|twin|pump|valve|filter|actuator)\b/i.test(capitalizedTopic) &&
     !/\b(systems|meters|sensors|transducers|controllers|twins|pumps|valves|filters|actuators)\b/i.test(capitalizedTopic);
@@ -4062,18 +4057,23 @@ export function synthesizeQuestionFromFact(
   let essayStems: string[];
   if (isEnvironmentalOrContext) {
     essayStems = [
-      `Based on the source text, provide a comprehensive analysis of ${topicPhrase}. Examine the documented environmental factors, structural consequences, and management challenges described on Page ${chunk.page_number}.`,
-      `Critically evaluate the environmental dynamics and systemic impacts of ${topicPhrase} as documented in the reading. Discuss the key evidence and mitigation considerations presented in the text.`,
+      `Learning Objective: Analyze environmental causes, systemic impacts, and resource management strategies. Based on the source text, examine ${topicPhrase} by addressing: (1) key documented environmental drivers, (2) structural consequences, and (3) practical management challenges.`,
+      `Learning Objective: Evaluate environmental dynamics and evidence-based mitigation approaches. Provide a structured essay on ${topicPhrase} discussing: (1) underlying resource conditions, (2) systemic impacts presented in the reading, and (3) documented mitigation considerations.`,
     ];
   } else if (isMethodOrPractice) {
     essayStems = [
-      `Based on the source text, evaluate the operational principles and implementation methodologies of ${topicPhrase}. Analyze the functional benefits and practical constraints described on Page ${chunk.page_number}.`,
-      `Provide a comprehensive analytical evaluation of ${topicPhrase} based on the reading. Discuss how it is implemented, its documented conservation impact, and operational requirements.`,
+      `Learning Objective: Evaluate practical methodology, implementation requirements, and measurable conservation impact. Based on the source text, analyze ${topicPhrase} by addressing: (1) core operational principles, (2) practical constraints, and (3) documented efficiency outcomes.`,
+      `Learning Objective: Synthesize implementation strategies and operational trade-offs. Write a structured evaluation of ${topicPhrase} explaining: (1) how it is applied, (2) its documented effectiveness, and (3) key operational requirements.`,
+    ];
+  } else if (isSystemOrTechnicalTopic) {
+    essayStems = [
+      `Learning Objective: Analyze technical architecture, operational mechanisms, and deployment requirements. Based on the source text, evaluate ${topicPhrase} by addressing: (1) its core functional mechanism, (2) architectural or hardware capabilities, and (3) practical implementation constraints.`,
+      `Learning Objective: Evaluate system design, functional behavior, and operational trade-offs. Write a structured assessment of ${topicPhrase} examining: (1) its operating principles, (2) structural characteristics, and (3) documented performance considerations.`,
     ];
   } else {
     essayStems = [
-      `Based on the source text, provide a comprehensive analytical assessment of ${topicPhrase}. Evaluate its core operational mechanism, functional capabilities, and practical implementation requirements described on Page ${chunk.page_number}.`,
-      `Critically examine the operating principles and structural characteristics of ${topicPhrase} as documented in the reading. Discuss its primary function and operational considerations.`,
+      `Learning Objective: Synthesize core concepts, supporting factual evidence, and domain significance. Based on the source text, examine ${topicPhrase} by addressing: (1) its defining characteristics and principles, (2) supporting evidence from the reading, and (3) its broader implications.`,
+      `Learning Objective: Critically evaluate conceptual foundations and documented outcomes. Write a structured essay on ${topicPhrase} addressing: (1) primary mechanisms or roles, (2) key supporting details from the text, and (3) practical significance within the subject area.`,
     ];
   }
   const qStem = essayStems[(seqIndex + variantIndex) % essayStems.length];
@@ -4108,13 +4108,16 @@ export function validateGroundedQuestion(q: any): boolean {
 
   const stem = q.question_text.trim();
 
+  const validTypes = new Set(['mcq', 'true_false', 'fill_blank', 'short_answer', 'essay']);
+  if (!validTypes.has(q.question_type)) return false;
+
   // Reject stems with dangling fragments, ellipses, or imperative phrases
   if (isDanglingOrIncompleteFragment(stem)) return false;
   if (/\.{3}|…/.test(stem)) return false;
   if (/,(?=\s*\?)/.test(stem)) return false;
   if (isImperativeOrActionPhrase(stem)) return false;
 
-  // Reject stems containing known broken fragments or fused run-ons
+  // Reject stems containing known broken fragments, acknowledgements, or ambiguous pronoun subjects
   if (
     stem.includes('Climate change, repeated drought, groundwater') ||
     stem.includes('Fix the basics first') ||
@@ -4125,6 +4128,15 @@ export function validateGroundedQuestion(q: any): boolean {
   }
 
   const isRtl = /[\u0600-\u06FF]/.test(stem);
+  if (!isRtl) {
+    if (isNonSubstantiveOrAckSentence(stem)) return false;
+    if (/\b(?:of|about|regarding|for|governing|behind|around|on)\s+(?:His|Her|Their|Its|My|Our|Your)\s+[a-z]+/i.test(stem)) {
+      return false;
+    }
+    if (/^(?:True or False:|Complete the statement:)\s*(?:He|She|It|They|His|Her|Their|Its)\s+/i.test(stem)) {
+      return false;
+    }
+  }
 
   // Type-specific checks
   if (q.question_type === 'mcq') {
@@ -4139,6 +4151,10 @@ export function validateGroundedQuestion(q: any): boolean {
       if (/\.{3}|…/.test(oTrim)) return false;
       if (isDanglingOrIncompleteFragment(oTrim)) return false;
       if (isImperativeOrActionPhrase(oTrim)) return false;
+      if (!isRtl && isNonSubstantiveOrAckSentence(oTrim)) return false;
+      if (/\b(passive static structural elements|dynamic real-time modulation|localized offline parameters without centralized|without automated continuous execution)\b/i.test(oTrim)) {
+        return false;
+      }
       if (!isRtl && !/[.!?]$/.test(oTrim)) return false;
     }
 
@@ -4155,6 +4171,7 @@ export function validateGroundedQuestion(q: any): boolean {
     if (!q.correct_answer || !validBinary.includes(q.correct_answer)) return false;
   } else if (q.question_type === 'fill_blank') {
     if (!stem.includes('[_____]')) return false;
+    if (/-\[_____\]|\[_____\]-|\[_____\]['’]s/i.test(stem)) return false;
     if (!q.correct_answer || String(q.correct_answer).trim().length < 2) return false;
   } else if (q.question_type === 'short_answer' || q.question_type === 'essay') {
     if (!q.correct_answer || String(q.correct_answer).trim().length < 15) return false;
@@ -4166,9 +4183,21 @@ export function validateGroundedQuestion(q: any): boolean {
   }
 
   // Source evidence checks
-  if (!q.source_document_name || typeof q.source_document_name !== 'string') return false;
-  if (typeof q.source_page !== 'number' || q.source_page < 1) return false;
-  if (!q.source_evidence || typeof q.source_evidence !== 'string' || q.source_evidence.trim().length < 15) return false;
+  if (!q.source_document_name || typeof q.source_document_name !== 'string') {
+    console.log('Validation failed: source_document_name', q.source_document_name);
+    return false;
+  }
+  if (typeof q.source_page !== 'number' || q.source_page < 1) {
+    console.log('Validation failed: source_page', q.source_page);
+    return false;
+  }
+  if (!q.source_evidence || typeof q.source_evidence !== 'string' || q.source_evidence.trim().length < 15) {
+    console.log('Validation failed: source_evidence', q.source_evidence);
+    return false;
+  }
+  if (!isRtl && isNonSubstantiveOrAckSentence(q.source_evidence)) {
+    return false;
+  }
 
   return true;
 }
@@ -4197,6 +4226,12 @@ export function generateGroundedQuestionsForGroups(
   source_chunk_id: string;
   source_evidence: string;
 }>> {
+  if ((questionTypesConfig.matching || 0) > 0) {
+    throw new Error(
+      'UNSUPPORTED_QUESTION_TYPE: Matching Pairs is no longer supported. Supported question types are: mcq, true_false, fill_blank, short_answer, essay.'
+    );
+  }
+
   const mcqCount = Math.max(0, questionTypesConfig.mcq || 0);
   const tfCount = Math.max(0, questionTypesConfig.true_false || 0);
   const fillCount = Math.max(0, questionTypesConfig.fill_blank || 0);
@@ -4240,18 +4275,31 @@ export function generateGroundedQuestionsForGroups(
   const candidateFacts: FactUnit[] = [];
   const seenSentences = new Set<string>();
 
+  const isRtlLang = isPersian || isPashto;
+
   for (const c of cleanChunks) {
     const sents = getSentences(c.cleanedText);
     for (const s of sents) {
       if (isHeadingOrFragment(s)) continue;
+      if (!isRtlLang && (isNonSubstantiveOrAckSentence(s) || hasUnresolvedLeadingPronoun(s) || isVagueGenericPlatitude(s))) {
+        continue;
+      }
       const norm = normalizeQuestionText(s);
       if (norm.length >= 15 && !seenSentences.has(norm)) {
         seenSentences.add(norm);
         candidateFacts.push({ chunk: c, sentence: s });
       }
     }
-    // If chunk had no punctuated sentences, add cleaned text only if not heading/fragment
-    if (sents.length === 0 && c.cleanedText.length >= 25 && !isHeadingOrFragment(c.cleanedText)) {
+    // If chunk truly had no punctuated sentences, add cleaned text only if substantive and valid
+    const hasSentencePunctuation = /[.!?؛۔]/.test(c.cleanedText);
+    if (
+      sents.length === 0 &&
+      !hasSentencePunctuation &&
+      c.cleanedText.length >= 25 &&
+      !isHeadingOrFragment(c.cleanedText) &&
+      !isDocumentMetadataOrNav(c.cleanedText) &&
+      (isRtlLang || (!isNonSubstantiveOrAckSentence(c.cleanedText) && !hasUnresolvedLeadingPronoun(c.cleanedText) && !isVagueGenericPlatitude(c.cleanedText)))
+    ) {
       const norm = normalizeQuestionText(c.cleanedText);
       if (!seenSentences.has(norm)) {
         seenSentences.add(norm);
@@ -4274,13 +4322,17 @@ export function generateGroundedQuestionsForGroups(
 
   const totalRequestedAcrossGroups = groupsCount * totalRequested;
 
+  // Calculate true available source capacity independently of requested quota
+  const maxAvailableCapacity = candidateFacts.length;
+
   // Shortfall pre-check: Each question across all groups MUST be grounded in a distinct educational fact
-  if (candidateFacts.length < totalRequestedAcrossGroups) {
+  if (maxAvailableCapacity < totalRequestedAcrossGroups || candidateFacts.length < totalRequestedAcrossGroups) {
+    const available = Math.min(maxAvailableCapacity, candidateFacts.length);
     const pagesList = Array.from(new Set(chunks.map((c) => c.page_number)))
       .sort((a, b) => a - b)
       .join(', ');
     throw new Error(
-      `INSUFFICIENT_DISTINCT_CONTENT: Selected page(s) [${pagesList || 'all'}] contain only ${candidateFacts.length} distinct educational fact(s), which is insufficient to generate ${totalRequestedAcrossGroups} distinct questions across ${groupsCount} group(s) without reusing the same source material or repeating questions. Please select additional pages or reduce the question quota.`
+      `INSUFFICIENT_DISTINCT_CONTENT: Selected page(s) [${pagesList || 'all'}] contain sufficient source material for only ${available} distinct grounded question(s), which is less than the requested quota of ${totalRequestedAcrossGroups} across ${groupsCount} group(s). Please select additional pages or reduce the question quota to avoid duplicates.`
     );
   }
 
@@ -4310,7 +4362,7 @@ export function generateGroundedQuestionsForGroups(
         } catch {
           continue;
         }
-        if (!candidateQ) {
+        if (!candidateQ || candidateQ.question_type !== type) {
           continue;
         }
         candidateQ.question_text = removeRagBoilerplateFromQuestionStem(candidateQ.question_text, isPersian || isPashto);
@@ -4333,30 +4385,60 @@ export function generateGroundedQuestionsForGroups(
         }
       }
 
-      if (synthesizedForSlot) {
-        groupsQuestions[g].push(synthesizedForSlot);
-        allGeneratedQuestions.push(synthesizedForSlot);
-        if (synthesizedForSlot.options && Array.isArray(synthesizedForSlot.options)) {
-          for (const opt of synthesizedForSlot.options) {
-            const normOpt = opt.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-            if (normOpt) globalUsedOptions.add(normOpt);
-          }
+      if (!synthesizedForSlot) {
+        const groupLabel = String.fromCharCode(65 + g);
+        throw new Error(
+          `GENERATION_QUOTA_ERROR: Failed to generate requested question type "${type}" for Group ${groupLabel} from the selected document evidence. Please select additional pages or reduce the "${type}" quota.`
+        );
+      }
+
+      groupsQuestions[g].push(synthesizedForSlot);
+      allGeneratedQuestions.push(synthesizedForSlot);
+      if (synthesizedForSlot.options && Array.isArray(synthesizedForSlot.options)) {
+        for (const opt of synthesizedForSlot.options) {
+          const normOpt = opt.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+          if (normOpt) globalUsedOptions.add(normOpt);
         }
       }
     }
   }
 
-  // Quota shortfall check:
-  // If the available distinct source content was insufficient to generate the requested quota of distinct questions across groups,
-  // DO NOT invent duplicate questions or repeat question stems!
-  // Report the shortfall clearly.
-  if (allGeneratedQuestions.length < totalRequestedAcrossGroups) {
-    const pagesList = Array.from(new Set(chunks.map((c) => c.page_number)))
-      .sort((a, b) => a - b)
-      .join(', ');
-    throw new Error(
-      `INSUFFICIENT_DISTINCT_CONTENT: Selected page(s) [${pagesList || 'all'}] contain sufficient source material for only ${allGeneratedQuestions.length} distinct grounded question(s), which is less than the requested quota of ${totalRequestedAcrossGroups} across ${groupsCount} group(s). Please select additional pages or reduce the question quota to avoid duplicates.`
-    );
+  // Exact quota enforcement verification across every group
+  const expectedCounts: Record<string, number> = {
+    mcq: mcqCount,
+    true_false: tfCount,
+    fill_blank: fillCount,
+    short_answer: shortCount,
+    essay: essayCount,
+  };
+  for (let g = 0; g < groupsCount; g++) {
+    const actualCounts: Record<string, number> = {
+      mcq: 0,
+      true_false: 0,
+      fill_blank: 0,
+      short_answer: 0,
+      essay: 0,
+    };
+    for (const q of groupsQuestions[g]) {
+      if (actualCounts[q.question_type] === undefined) {
+        throw new Error(`GENERATION_QUOTA_ERROR: Unexpected question type "${q.question_type}" generated.`);
+      }
+      actualCounts[q.question_type]++;
+    }
+    for (const [qType, expected] of Object.entries(expectedCounts)) {
+      if (actualCounts[qType] !== expected) {
+        const groupLabel = String.fromCharCode(65 + g);
+        throw new Error(
+          `GENERATION_QUOTA_ERROR: Quota mismatch for Group ${groupLabel} type "${qType}": expected ${expected}, generated ${actualCounts[qType]}.`
+        );
+      }
+    }
+    if (groupsQuestions[g].length !== totalRequested) {
+      const groupLabel = String.fromCharCode(65 + g);
+      throw new Error(
+        `GENERATION_QUOTA_ERROR: Total questions mismatch for Group ${groupLabel}: expected ${totalRequested}, generated ${groupsQuestions[g].length}.`
+      );
+    }
   }
 
   return groupsQuestions;
@@ -5020,13 +5102,25 @@ async function startServer() {
         });
       }
 
-      const qConfig = req.body.question_types_config || req.body.question_types || { mcq: 2, true_false: 1, short_answer: 1 };
+      const rawQConfig = req.body.question_types_config || req.body.question_types || { mcq: 1, true_false: 1, fill_blank: 0, short_answer: 1, essay: 1 };
+      if ((rawQConfig.matching || 0) > 0) {
+        return res.status(422).json({
+          detail: 'Matching Pairs is no longer supported. Supported question types are: mcq, true_false, fill_blank, short_answer, essay.',
+        });
+      }
+      const qConfig = {
+        mcq: Math.max(0, Number(rawQConfig.mcq) || 0),
+        true_false: Math.max(0, Number(rawQConfig.true_false) || 0),
+        fill_blank: Math.max(0, Number(rawQConfig.fill_blank) || 0),
+        short_answer: Math.max(0, Number(rawQConfig.short_answer) || 0),
+        essay: Math.max(0, Number(rawQConfig.essay) || 0),
+      };
       const totalRequestedQs =
-        (qConfig.mcq || 0) +
-        (qConfig.true_false || 0) +
-        (qConfig.fill_blank || 0) +
-        (qConfig.short_answer || 0) +
-        (qConfig.essay || 0);
+        qConfig.mcq +
+        qConfig.true_false +
+        qConfig.fill_blank +
+        qConfig.short_answer +
+        qConfig.essay;
 
       if (totalRequestedQs <= 0) {
         return res.status(422).json({
@@ -5111,6 +5205,16 @@ async function startServer() {
         if (typeof err.message === 'string' && err.message.startsWith('INSUFFICIENT_DISTINCT_CONTENT:')) {
           return res.status(422).json({
             detail: err.message.replace('INSUFFICIENT_DISTINCT_CONTENT:', '').trim(),
+          });
+        }
+        if (typeof err.message === 'string' && err.message.startsWith('UNSUPPORTED_QUESTION_TYPE:')) {
+          return res.status(422).json({
+            detail: err.message.replace('UNSUPPORTED_QUESTION_TYPE:', '').trim(),
+          });
+        }
+        if (typeof err.message === 'string' && err.message.startsWith('GENERATION_QUOTA_ERROR:')) {
+          return res.status(422).json({
+            detail: err.message.replace('GENERATION_QUOTA_ERROR:', '').trim(),
           });
         }
         throw err;
@@ -5685,7 +5789,7 @@ async function startServer() {
       : [];
 
     for (const chunk of candidatePool) {
-      const sents = getSentences(chunk.content);
+      const sents = getSentences((chunk as any).cleanedText || chunk.content);
       for (const sent of sents) {
         const norm = normalizeQuestionText(sent);
         if (norm.length >= 15 && !usedSentences.has(norm)) {
@@ -5696,10 +5800,12 @@ async function startServer() {
       }
     }
 
-    // If still no candidates found from candidatePool, search all chunks in document
+    // If still no candidates found from candidatePool, search all cleaned chunks in document
     if (candidates.length === 0) {
       for (const chunk of doc.chunks) {
-        const sents = getSentences(chunk.content);
+        const { cleanedText, substantiveWordsCount } = cleanDocumentContentForRag(chunk.content);
+        if (substantiveWordsCount < 5) continue;
+        const sents = getSentences(cleanedText);
         for (const sent of sents) {
           const norm = normalizeQuestionText(sent);
           if (norm.length >= 15 && !usedSentences.has(norm)) {

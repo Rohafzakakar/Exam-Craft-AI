@@ -148,7 +148,7 @@ export function ExamWorkspace({
   const [tfCount, setTfCount] = useState<number>(1);
   const [fillBlankCount, setFillBlankCount] = useState<number>(0);
   const [shortCount, setShortCount] = useState<number>(1);
-  const [essayCount, setEssayCount] = useState<number>(0);
+  const [essayCount, setEssayCount] = useState<number>(1);
   const [bloomEnabled, setBloomEnabled] = useState<boolean>(true);
   const [difficultyProfile, setDifficultyProfile] = useState<'balanced' | 'easy' | 'challenging'>('balanced');
 

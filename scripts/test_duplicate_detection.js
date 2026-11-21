@@ -496,185 +496,252 @@ async function runDuplicateDetectionSuite() {
     assert.ok(res.body.detail, 'Must provide detailed error response');
     assert.ok(
       res.body.detail.includes('Selected page(s)') &&
-      (res.body.detail.includes('insufficient to generate') || res.body.detail.includes('without reusing')),
+      res.body.detail.includes('sufficient source material for only') &&
+      res.body.detail.includes('across 3 group(s)') &&
+      res.body.detail.includes('reduce the question quota'),
       `Error detail must clearly explain multi-group fact shortage: ${res.body.detail}`
     );
   });
 
-  // 12. API TEST: Al-Shifa examination quality, 4 options per MCQ, topic-relevant distractors, meaningful fill-in-the-blank
-  await test('Al-Shifa Examination: Zero generic distractors, 4 distinct options, topic-grounded pedagogical questions', async () => {
-    const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
-      document_id: 'doc-1792634270547-fkqxf',
-      title: 'Women Thinkers in Early Islam Examination',
-      subject: 'Early Islamic Intellectual History',
-      groups_count: 3,
-      question_types_config: { mcq: 2, true_false: 1, fill_blank: 1 },
-    });
+  // 12-15. Al-Shifa Examination Tests (using a temporary uploaded Al-Shifa fixture document + guaranteed cleanup)
+  const alShifaGuestToken = `guest_alshifa_test_${Date.now()}`;
+  const alShifaText = [
+    'Al-Shifa bint Abdullah al-Adawiyya, whose original name is believed to have been Layla, learned to read and write before the emergence of Islam and developed knowledge of traditional healing practices.',
+    'After migrating to Medina, Al-Shifa had greater opportunities to use her abilities, and Prophet Muhammad recognised her knowledge and encouraged her educational activities.',
+    'Prophet Muhammad asked Al-Shifa to continue teaching Hafsa bint Umar, his wife, the traditional healing practice known as ruqyat al-Namlah as recorded in Sunan Abi Dawud.',
+    'Historical accounts demonstrate that Al-Shifa actively transferred her knowledge and was not simply an educated woman living in private seclusion.',
+    'When converting to Islam, Al-Shifa presented her traditional healing practice to the Prophet for his approval before continuing to use it within the community.',
+    "Her religious and intellectual authority therefore developed through personal knowledge, practical experience, and the Prophet's recognition within early Islamic society.",
+    "According to Ibn Abd al-Barr in Al-Isti'ab, Caliph Umar ibn al-Khattab entrusted Al-Shifa with administrative responsibilities concerning the marketplace of Medina.",
+    'Later historians disagreed about the precise nature of her role as a market judge and whether she was officially appointed, citing a need for further historical evidence.',
+    'The marketplace of Medina was not merely a place for buying and selling goods, because it functioned as a major centre of economic and social life closely connected to Islamic ethical principles.',
+    "From a gender perspective, Al-Shifa's biography illustrates both educational opportunities and social limitations, as cultural expectations could restrict public participation.",
+    'Al-Shifa expressed her knowledge not through written books, but through direct teaching, practical experience, and active service to her community.',
+    "The most important lesson from Al-Shifa's life is that women in Islamic history were not merely recipients of religious knowledge, but educators, transmitters of knowledge, and active contributors to society.",
+    'Early Islamic educational history records that female companions memorized prophetic traditions and instructed both male and female students across Medinan study circles.',
+    'Ethical commercial supervision in the Medinan marketplace emphasized honest weights, fair pricing, and transparent dispute resolution among trading merchants.',
+    'Pre-Islamic Arabian literacy was relatively uncommon, making proficient scribes and educators especially valuable in the emerging Medinan community.',
+    'Caliph Umar consulted knowledgeable companions on civic administration and commercial oversight to uphold public welfare across growing urban markets.',
+    'Transmission of therapeutic remedies alongside scriptural literacy reflected an integrated conception of practical communal scholarship in early Islam.',
+    'Instruction in calligraphy and reading enabled early Muslim women to preserve legal contracts, civic correspondence, and religious treatises accurately.',
+    'Critical historiography distinguishes verified early biographical reports from later interpretive elaborations regarding formal public market offices.',
+    'Community-based mentorship allowed scholarly women to exercise recognized moral guidance and civic responsibility within early Medinan society.',
+  ].join('\n\n');
 
-    assert.strictEqual(res.statusCode, 201, `Failed to generate Al-Shifa exam: ${JSON.stringify(res.body)}`);
-    assert.strictEqual(res.body.groups.length, 3, 'Must generate exactly 3 groups (A, B, C)');
+  const boundary = '----AlShifaBoundary' + Math.random().toString(36).slice(2);
+  const uploadBody = [
+    `--${boundary}`,
+    'Content-Disposition: form-data; name="file"; filename="Nawida-kakar-Women as Religious Thinkers in Early Islam.txt"',
+    'Content-Type: text/plain',
+    '',
+    alShifaText,
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
 
-    const bannedGenericDistractors = [
-      'contradicts established principles by eliminating all verified empirical data',
-      'represents an outdated hypothesis that has been completely superseded without evidence',
-      'restricts application strictly to theoretical models without practical validation',
-      'نقض تعهدات آموزشی و مدنی مندرج در اسناد بنیادین کشور',
-      'سلب مسئولیت نهادهای عمومی در تأمین عدالت اجتماعی',
-      'توقف نامحدود رسیدگی به حقوق بنیادین در نظام حقوقی',
-    ];
+  const uploadRes = await fetch(`${BASE_URL}/api/documents/upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      Authorization: `Bearer ${alShifaGuestToken}`,
+    },
+    body: uploadBody,
+  });
+  assert.strictEqual(uploadRes.status, 201, `Temporary Al-Shifa document upload must succeed, got ${uploadRes.status}`);
+  const alShifaDoc = await uploadRes.json();
+  const createdAlShifaExamIds = [];
 
-    const allQuestions = [];
-    const seenEvidenceSet = new Set();
+  try {
+    // 12. API TEST: Al-Shifa examination quality, 4 options per MCQ, topic-relevant distractors, meaningful fill-in-the-blank
+    await test('Al-Shifa Examination: Zero generic distractors, 4 distinct options, topic-grounded pedagogical questions', async () => {
+      const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
+        document_id: alShifaDoc.id,
+        title: 'Women Thinkers in Early Islam Examination',
+        subject: 'Early Islamic Intellectual History',
+        groups_count: 3,
+        question_types_config: { mcq: 2, true_false: 1, fill_blank: 1 },
+      }, alShifaGuestToken);
 
-    for (const group of res.body.groups) {
-      assert.strictEqual(group.questions.length, 4, `${group.group_name} must have 4 questions`);
+      assert.strictEqual(res.statusCode, 201, `Failed to generate Al-Shifa exam: ${JSON.stringify(res.body)}`);
+      createdAlShifaExamIds.push(res.body.id);
+      assert.strictEqual(res.body.groups.length, 3, 'Must generate exactly 3 groups (A, B, C)');
 
-      for (const q of group.questions) {
-        allQuestions.push({ group: group.group_name, q });
+      const bannedGenericDistractors = [
+        'contradicts established principles by eliminating all verified empirical data',
+        'represents an outdated hypothesis that has been completely superseded without evidence',
+        'restricts application strictly to theoretical models without practical validation',
+        'نقض تعهدات آموزشی و مدنی مندرج در اسناد بنیادین کشور',
+        'سلب مسئولیت نهادهای عمومی در تأمین عدالت اجتماعی',
+        'توقف نامحدود رسیدگی به حقوق بنیادین در نظام حقوقی',
+      ];
 
-        // Verify underlying fact is unique across all groups
-        assert.ok(q.source_evidence && q.source_evidence.length > 20, 'Question must have substantive evidence');
-        const normEv = normalizeQuestionText(q.source_evidence);
-        assert.strictEqual(
-          seenEvidenceSet.has(normEv),
-          false,
-          `Evidence reused across groups: "${q.source_evidence.slice(0, 80)}..."`
-        );
-        seenEvidenceSet.add(normEv);
+      const allQuestions = [];
+      const seenEvidenceSet = new Set();
 
-        // Verify citation accuracy
-        assert.strictEqual(q.source_document_name, 'Nawida-kakar-Women as Religious Thinkers in Early Islam.pdf');
-        assert.ok(q.source_page === 1 || q.source_page === 2, 'Must cite page 1 or page 2');
+      for (const group of res.body.groups) {
+        assert.strictEqual(group.questions.length, 4, `${group.group_name} must have 4 questions`);
 
-        if (q.question_type === 'mcq') {
-          // Exactly 4 options
-          assert.strictEqual(q.options.length, 4, 'MCQ must contain exactly 4 options');
+        for (const q of group.questions) {
+          allQuestions.push({ group: group.group_name, q });
 
-          // Defensible correct answer in options
-          assert.ok(
-            q.options.includes(q.correct_answer),
-            `Correct answer "${q.correct_answer}" must be present among options`
+          // Verify underlying fact is unique across all groups
+          assert.ok(q.source_evidence && q.source_evidence.length > 20, 'Question must have substantive evidence');
+          const normEv = normalizeQuestionText(q.source_evidence);
+          assert.strictEqual(
+            seenEvidenceSet.has(normEv),
+            false,
+            `Evidence reused across groups: "${q.source_evidence.slice(0, 80)}..."`
           );
+          seenEvidenceSet.add(normEv);
 
-          // Zero generic distractors
-          for (const opt of q.options) {
-            const normOpt = opt.toLowerCase();
-            for (const banned of bannedGenericDistractors) {
-              assert.ok(
-                !normOpt.includes(banned.toLowerCase()),
-                `Generic distractor detected in ${group.group_name} MCQ: "${opt}"`
-              );
+          // Verify citation accuracy
+          assert.strictEqual(q.source_document_name, alShifaDoc.filename);
+          assert.ok(q.source_page === 1 || q.source_page === 2, 'Must cite page 1 or page 2');
+
+          if (q.question_type === 'mcq') {
+            // Exactly 4 options
+            assert.strictEqual(q.options.length, 4, 'MCQ must contain exactly 4 options');
+
+            // Defensible correct answer in options
+            assert.ok(
+              q.options.includes(q.correct_answer),
+              `Correct answer "${q.correct_answer}" must be present among options`
+            );
+
+            // Zero generic distractors
+            for (const opt of q.options) {
+              const normOpt = opt.toLowerCase();
+              for (const banned of bannedGenericDistractors) {
+                assert.ok(
+                  !normOpt.includes(banned.toLowerCase()),
+                  `Generic distractor detected in ${group.group_name} MCQ: "${opt}"`
+                );
+              }
             }
+
+            // Options must all be distinct
+            const uniqueOpts = new Set(q.options.map((o) => o.trim().toLowerCase()));
+            assert.strictEqual(uniqueOpts.size, 4, 'All 4 MCQ options must be mutually distinct');
           }
 
-          // Options must all be distinct
-          const uniqueOpts = new Set(q.options.map((o) => o.trim().toLowerCase()));
-          assert.strictEqual(uniqueOpts.size, 4, 'All 4 MCQ options must be mutually distinct');
+          if (q.question_type === 'fill_blank') {
+            // Fill in the blank must blank out a meaningful term
+            assert.ok(q.question_text.includes('[_____]'), 'Cloze must contain blank [_____]');
+            assert.ok(q.correct_answer && q.correct_answer.length >= 3, 'Answer must be a substantive term');
+            assert.ok(
+              !/^(the|and|for|with|this|that|from|into|upon)$/i.test(q.correct_answer),
+              `Blank must not target trivial stopword: "${q.correct_answer}"`
+            );
+          }
         }
+      }
 
-        if (q.question_type === 'fill_blank') {
-          // Fill in the blank must blank out a meaningful term
-          assert.ok(q.question_text.includes('[_____]'), 'Cloze must contain blank [_____]');
-          assert.ok(q.correct_answer && q.correct_answer.length >= 3, 'Answer must be a substantive term');
-          assert.ok(
-            !/^(the|and|for|with|this|that|from|into|upon)$/i.test(q.correct_answer),
-            `Blank must not target trivial stopword: "${q.correct_answer}"`
+      // Pairwise duplicate check across all questions
+      for (let i = 0; i < allQuestions.length; i++) {
+        for (let j = i + 1; j < allQuestions.length; j++) {
+          const itemA = allQuestions[i];
+          const itemB = allQuestions[j];
+          assert.strictEqual(
+            areQuestionsDuplicate(itemA.q, itemB.q),
+            false,
+            `Questions in ${itemA.group} and ${itemB.group} must not be duplicates`
           );
         }
       }
-    }
-
-    // Pairwise duplicate check across all questions
-    for (let i = 0; i < allQuestions.length; i++) {
-      for (let j = i + 1; j < allQuestions.length; j++) {
-        const itemA = allQuestions[i];
-        const itemB = allQuestions[j];
-        assert.strictEqual(
-          areQuestionsDuplicate(itemA.q, itemB.q),
-          false,
-          `Questions in ${itemA.group} and ${itemB.group} must not be duplicates`
-        );
-      }
-    }
-  });
-
-  // 13. API TEST: Al-Shifa Scaling to 5 Groups (Sufficient Distinct Facts)
-  await test('Al-Shifa 5-Group Exam: 5 groups x 3 questions = 15 distinct questions with zero fact overlap', async () => {
-    const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
-      document_id: 'doc-1792634270547-fkqxf',
-      title: 'Al-Shifa 5-Group Exam',
-      subject: 'Early Islamic History',
-      groups_count: 5,
-      question_types_config: { mcq: 2, true_false: 1 },
     });
 
-    assert.strictEqual(res.statusCode, 201, `Failed to generate 5 groups: ${JSON.stringify(res.body)}`);
-    assert.strictEqual(res.body.groups.length, 5, 'Must generate exactly 5 groups (A through E)');
+    // 13. API TEST: Al-Shifa Scaling to 5 Groups (Sufficient Distinct Facts)
+    await test('Al-Shifa 5-Group Exam: 5 groups x 3 questions = 15 distinct questions with zero fact overlap', async () => {
+      const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
+        document_id: alShifaDoc.id,
+        title: 'Al-Shifa 5-Group Exam',
+        subject: 'Early Islamic History',
+        groups_count: 5,
+        question_types_config: { mcq: 2, true_false: 1 },
+      }, alShifaGuestToken);
 
-    const seenEvidences = new Set();
-    res.body.groups.forEach((g) => {
-      assert.strictEqual(g.questions.length, 3, `${g.group_name} must have 3 questions`);
-      g.questions.forEach((q) => {
-        const normEv = normalizeQuestionText(q.source_evidence);
-        assert.strictEqual(
-          seenEvidences.has(normEv),
-          false,
-          `Duplicate fact used across 5 groups: "${q.source_evidence.slice(0, 60)}..."`
-        );
-        seenEvidences.add(normEv);
+      assert.strictEqual(res.statusCode, 201, `Failed to generate 5 groups: ${JSON.stringify(res.body)}`);
+      createdAlShifaExamIds.push(res.body.id);
+      assert.strictEqual(res.body.groups.length, 5, 'Must generate exactly 5 groups (A through E)');
+
+      const seenEvidences = new Set();
+      res.body.groups.forEach((g) => {
+        assert.strictEqual(g.questions.length, 3, `${g.group_name} must have 3 questions`);
+        g.questions.forEach((q) => {
+          const normEv = normalizeQuestionText(q.source_evidence);
+          assert.strictEqual(
+            seenEvidences.has(normEv),
+            false,
+            `Duplicate fact used across 5 groups: "${q.source_evidence.slice(0, 60)}..."`
+          );
+          seenEvidences.add(normEv);
+        });
       });
+
+      assert.strictEqual(seenEvidences.size, 15, 'All 15 questions across 5 groups must be backed by distinct facts');
     });
 
-    assert.strictEqual(seenEvidences.size, 15, 'All 15 questions across 5 groups must be backed by distinct facts');
-  });
+    // 14. API TEST: Al-Shifa Shortage reporting on excessive group demand
+    await test('Al-Shifa Shortage: Refuses to fabricate facts or repeat questions when requesting 10 groups x 5 questions', async () => {
+      const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
+        document_id: alShifaDoc.id,
+        title: 'Al-Shifa Excessive Demand Exam',
+        subject: 'Early Islamic History',
+        groups_count: 10,
+        question_types_config: { mcq: 3, true_false: 1, fill_blank: 1 },
+      }, alShifaGuestToken);
 
-  // 14. API TEST: Al-Shifa Shortage reporting on excessive group demand
-  await test('Al-Shifa Shortage: Refuses to fabricate facts or repeat questions when requesting 10 groups x 5 questions', async () => {
-    const res = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
-      document_id: 'doc-1792634270547-fkqxf',
-      title: 'Al-Shifa Excessive Demand Exam',
-      subject: 'Early Islamic History',
-      groups_count: 10,
-      question_types_config: { mcq: 3, true_false: 1, fill_blank: 1 },
+      assert.strictEqual(res.statusCode, 422, 'Must return 422 when requesting 50 questions with ~20 available facts');
+      assert.ok(res.body.detail, 'Must provide detailed shortfall explanation');
+      assert.ok(
+        res.body.detail.includes('insufficient to generate') || res.body.detail.includes('Selected page(s)'),
+        `Shortfall message must be clear: ${res.body.detail}`
+      );
     });
 
-    assert.strictEqual(res.statusCode, 422, 'Must return 422 when requesting 50 questions with ~25 available facts');
-    assert.ok(res.body.detail, 'Must provide detailed shortfall explanation');
-    assert.ok(
-      res.body.detail.includes('insufficient to generate') || res.body.detail.includes('Selected page(s)'),
-      `Shortfall message must be clear: ${res.body.detail}`
-    );
-  });
+    // 15. API TEST: Single Question Regeneration Preserves Grounding & Non-Duplication
+    await test('Single Question Regeneration: Preserves grounding and avoids duplication of existing questions', async () => {
+      // 1. Generate an initial exam with Group A and B
+      const genRes = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
+        document_id: alShifaDoc.id,
+        title: 'Regeneration Test Exam',
+        subject: 'Early Islamic History',
+        groups_count: 2,
+        question_types_config: { mcq: 2, true_false: 1 },
+      }, alShifaGuestToken);
+      assert.strictEqual(genRes.statusCode, 201);
+      const exam = genRes.body;
+      createdAlShifaExamIds.push(exam.id);
+      const targetQ = exam.groups[0].questions[0];
 
-  // 15. API TEST: Single Question Regeneration Preserves Grounding & Non-Duplication
-  await test('Single Question Regeneration: Preserves grounding and avoids duplication of existing questions', async () => {
-    // 1. Generate an initial exam with Group A and B
-    const genRes = await httpPostJson(`${BASE_URL}/api/exams/generate`, {
-      document_id: 'doc-1792634270547-fkqxf',
-      title: 'Regeneration Test Exam',
-      subject: 'Early Islamic History',
-      groups_count: 2,
-      question_types_config: { mcq: 2, true_false: 1 },
+      // 2. Regenerate targetQ
+      const regenRes = await httpPostJson(`${BASE_URL}/api/exams/${exam.id}/questions/${targetQ.id}/regenerate`, {
+        bloom_level: 'analyze',
+      }, alShifaGuestToken);
+      assert.strictEqual(regenRes.statusCode, 200, `Regeneration failed: ${JSON.stringify(regenRes.body)}`);
+      const newQ = regenRes.body;
+
+      assert.strictEqual(newQ.id, targetQ.id, 'Regenerated question must retain original ID');
+      assert.ok(newQ.source_evidence && newQ.source_evidence.length > 15, 'Must have source evidence');
+      assert.strictEqual(newQ.source_document_name, alShifaDoc.filename);
+      if (newQ.question_type === 'mcq') {
+        assert.strictEqual(newQ.options.length, 4, 'Must have 4 options');
+        assert.ok(newQ.options.includes(newQ.correct_answer), 'Correct answer must be in options');
+      }
     });
-    assert.strictEqual(genRes.statusCode, 201);
-    const exam = genRes.body;
-    const targetQ = exam.groups[0].questions[0];
-
-    // 2. Regenerate targetQ
-    const regenRes = await httpPostJson(`${BASE_URL}/api/exams/${exam.id}/questions/${targetQ.id}/regenerate`, {
-      bloom_level: 'analyze',
-    });
-    assert.strictEqual(regenRes.statusCode, 200, `Regeneration failed: ${JSON.stringify(regenRes.body)}`);
-    const newQ = regenRes.body;
-
-    assert.strictEqual(newQ.id, targetQ.id, 'Regenerated question must retain original ID');
-    assert.ok(newQ.source_evidence && newQ.source_evidence.length > 15, 'Must have source evidence');
-    assert.strictEqual(newQ.source_document_name, 'Nawida-kakar-Women as Religious Thinkers in Early Islam.pdf');
-    if (newQ.question_type === 'mcq') {
-      assert.strictEqual(newQ.options.length, 4, 'Must have 4 options');
-      assert.ok(newQ.options.includes(newQ.correct_answer), 'Correct answer must be in options');
+  } finally {
+    // Clean up temporary Al-Shifa exams and uploaded fixture document
+    for (const examId of createdAlShifaExamIds) {
+      await fetch(`${BASE_URL}/api/exams/${examId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${alShifaGuestToken}` },
+      }).catch(() => {});
     }
-  });
+    await fetch(`${BASE_URL}/api/documents/${alShifaDoc.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${alShifaGuestToken}` },
+    }).catch(() => {});
+  }
 
   console.log('\n======================================================');
   console.log(`  ALL ${passed}/${total} DUPLICATE & GROUNDING TESTS PASSED!`);

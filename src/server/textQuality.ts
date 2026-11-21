@@ -65,8 +65,104 @@ export function sanitizeEducationalText(text: string): string {
 }
 
 /**
+ * Checks whether a sentence is an acknowledgement, dedication, declaration,
+ * supervisor/family gratitude note, self-referential report boilerplate, or citation/URL line.
+ */
+export function isNonSubstantiveOrAckSentence(text: string): boolean {
+  if (!text) return true;
+  const t = text.trim();
+
+  // Gratitude, acknowledgements, dedications, declarations, thesis/project cover boilerplate
+  if (
+    /\b(would like to (?:thank|express|acknowledge|extend)|sincere (?:thanks|gratitude|appreciation)|heartfelt (?:thanks|gratitude)|deeply grateful|special thanks (?:go )?to|indebted to|thank(?:s|ing)? (?:my|our|the) (?:supervisor|advisor|mentor|professor|lecturer|parents|family|friends|colleagues|almighty|god)|dedicated to|in partial fulfillment of (?:the )?requirements|hereby declare that|i certify that this (?:project|thesis|report)|this (?:project|thesis|dissertation)(?: report)? (?:is|was) submitted (?:by|to|in)|constant support (?:and|throughout|during)|without (?:whose|his|her|their) (?:support|guidance|help|encouragement)|valuable (?:insights|guidance|feedback|suggestions) (?:and|throughout|during|from))\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+
+  if (/^(?:i|we)\s+(?:would like|wish|am grateful|are grateful|thank|dedicate|hereby|sincerely|acknowledge)\b/i.test(t)) {
+    return true;
+  }
+
+  // Self-referential document / chapter / figure / table meta-prose
+  if (
+    /^(?:this|the)\s+(?:report|chapter|paper|document|article|section|study|module|manual|thesis|project|book|unit)\s+(?:reviews|presents|examines|discusses|describes|provides|explains|outlines|summarizes|covers|focuses on|introduces|highlights|concludes|aims to)\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(?:in this|the (?:next|following|previous|above|below|remainder of this))\s+(?:report|chapter|section|paper|document|study|thesis|project|work|table|figure)\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(?:chapter|section|part|unit)\s+\d+(?:\.\d+)*\s+(?:discusses|presents|introduces|covers|explains|outlines|describes|summarizes|focuses|examines|reviews)\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(?:as (?:shown|illustrated|depicted|summarized|listed|seen) in (?:figure|table|diagram|chart|section|chapter)|for (?:more|further) details,?\s+(?:see|refer to)|below is (?:a|the) (?:summary|list|table|figure)|the following (?:table|figure|list|chart) (?:shows|illustrates|summarizes))\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+
+  // URLs, emails, DOIs, ISBN/ISSN, bibliographic lines
+  if (/https?:\/\/|www\.|\bdoi:\s*\S+|\bis[bs]n\b/i.test(t)) {
+    return true;
+  }
+  if (/^[A-Z][a-z]+,\s+[A-Z]\.\s*(?:\(\d{4}\)|et al\.)/.test(t)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if an English sentence begins with an unresolved third-person or demonstrative pronoun
+ * lacking an in-sentence referent (e.g., "His insights...", "It provides...", "They allow...").
+ */
+export function hasUnresolvedLeadingPronoun(text: string): boolean {
+  if (!text) return true;
+  const t = text.trim();
+  if (/^(?:he|she|it|they|we|you|i|his|her|their|its|my|our|your)\b/i.test(t)) {
+    return true;
+  }
+  if (
+    /^(?:this|that|these|those|such)\s+(?:is|are|was|were|can|could|may|might|will|would|should|has|have|had|helps?|enables?|allows?|provides?|makes?|shows?|means?|indicates?|suggests?|demonstrates?|highlights?|insights?|findings?|results?|approach|method|system|process|technique|tool|feature|work|effort|study)\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Detects generic, non-testable platitudes lacking a concrete factual mechanism or causal clause.
+ */
+export function isVagueGenericPlatitude(text: string): boolean {
+  if (!text) return true;
+  const t = text.trim();
+  const hasMechanismClause = /\b(?:because|by\s+[a-z]+ing|via|through|when|whereas|such as|which\s+(?:prevents?|enables?|reduces?|increases?|converts?|validates?|regulates?|generates?|stores?))\b/i.test(t);
+  if (hasMechanismClause) return false;
+
+  return /\b(?:plays? (?:a|an) (?:key|major|vital|crucial|important|significant) role|is (?:very )?(?:important|essential|crucial|useful|helpful|good|necessary|beneficial) (?:for|in|to)|many (?:benefits|advantages|features|users)|various (?:tools|methods|technologies|aspects|features|ways)|aims? to (?:improve|provide|create|help|make)|designed to be (?:user[- ]friendly|easy|simple|helpful)|in (?:today's|modern) (?:world|society|era|age)|generally speaking|needless to say|it is (?:important|worth|clear) to note)\b/i.test(
+    t
+  );
+}
+
+/**
  * Validates whether a candidate string is a coherent, complete educational concept.
- * Rejects reporting verbs, survey organizations, relative clauses, and broken fragments.
+ * Rejects reporting verbs, survey organizations, pronouns, generic meta-nouns, relative clauses, and broken fragments.
  */
 export function isValidEducationalTopic(topic: string): boolean {
   if (!topic || typeof topic !== 'string') return false;
@@ -83,13 +179,31 @@ export function isValidEducationalTopic(topic: string): boolean {
     return false;
   }
 
+  // Reject acknowledgement / gratitude / supervisor vocabulary
+  if (/\b(acknowledg\w*|gratitude|dedication|fulfillment|supervisor|advisor|mentor|hereby|thanks)\b/i.test(t)) {
+    return false;
+  }
+
   // Reject relative pronouns / conjunctions
   if (/\b(that|which|who|whom|whose|whereas|while|because|although)\b/i.test(t)) {
     return false;
   }
 
-  // Reject prepositions or determiners at start
-  if (/^(in|at|on|under|across|from|during|within|by|for|with|according to|the|this|that|these|those)\s+/i.test(t)) {
+  // Reject prepositions, articles, pronouns, possessives, or vague quantifiers at start
+  if (
+    /^(in|at|on|under|across|from|during|within|by|for|with|according to|the|a|an|this|that|these|those|he|she|it|they|we|you|i|his|her|its|their|our|my|your|such|some|many|several|various|other|another|both|each|every|either|neither|all|most|few|none|anyone|someone|everyone|nobody|something|nothing|everything)\s+/i.test(
+      t
+    )
+  ) {
+    return false;
+  }
+
+  // Reject bare generic meta-nouns or vague 1-word topics lacking conceptual specificity
+  if (
+    /^(insights?|guidance|feedback|gratitude|thanks|encouragement|support|results?|findings?|conclusions?|introduction|overview|summary|background|methodology|objectives?|purpose|scope|details?|aspects?|factors?|reasons?|benefits?|challenges?|issues?|problems?|solutions?|advantages?|disadvantages?|limitations?|future work|chapter|section|report|paper|study|project|work|author|authors|supervisor|team|students?|users?|people|things?|items?|data|information|system|systems|application|applications|process|processes|method|methods|approach|approaches|implementation|evaluation|testing|analysis|design)$/i.test(
+      t
+    )
+  ) {
     return false;
   }
 
@@ -312,7 +426,7 @@ export function isDocumentMetadataOrNav(text: string): boolean {
   if (/^(prepared\s+by|submitted\s+by|presented\s+by|supervised\s+by|written\s+by|author|instructor|professor|lecturer|course|semester|department|faculty|roll\s+no|student\s+name|university|academic\s+year)\b/i.test(trimmed)) {
     return true;
   }
-  if (/^(about\s+the\s+authors?|author\s+(biography|bio|profile|details|note|information)|biographical\s+note|acknowledgements?|about\s+the\s+contributors?)\b/i.test(trimmed)) {
+  if (/^(about\s+the\s+authors?|author\s+(biography|bio|profile|details|note|information)|biographical\s+note|acknowledg(e)?ments?|dedication|declaration|certificate|preface|foreword|about\s+the\s+contributors?)\b/i.test(trimmed)) {
     return true;
   }
   if (/\b(co-authored\s+by|authored\s+by|corresponding\s+author|contact\s+email|email\s*[:：]|orcid\b)/i.test(trimmed)) {
@@ -364,7 +478,7 @@ export function isDocumentMetadataOrNav(text: string): boolean {
   }
 
   // 4. Table of contents, index, and bibliography markers
-  if (/^(table\s+of\s+contents|contents|table\s+des\s+mati[èe]res|index|bibliography|references|list\s+of\s+(figures|tables|illustrations))\b/i.test(trimmed)) {
+  if (/^(table\s+of\s+contents|contents|table\s+des\s+mati[èe]res|index|bibliography|references|list\s+of\s+(figures|tables|illustrations|abbreviations|acronyms)|glossary)\b/i.test(trimmed)) {
     return true;
   }
   if (/^(فهرست\s*(مطالب|مندرجات|اشکال|جداول)?|منابع\s*و\s*مآخذ)\b/i.test(trimmed)) {
@@ -376,9 +490,12 @@ export function isDocumentMetadataOrNav(text: string): boolean {
   if (/(\.{2,}|-{2,}|_{2,}|\s{3,})\s*\d+\s*$/.test(trimmed)) {
     return true;
   }
+  if (/^\s*\d+(?:\.\d+)*\s+[A-Za-z][^\n]{3,65}\s+\d{1,3}\s*$/.test(trimmed)) {
+    return true;
+  }
 
   // 6. Page numbering, running headers, footers, orphan page markers
-  if (/^(page\s+\d+(\s+of\s+\d+)?|\d+\s*\|\s*p\s*a\s*g\s*e|--\s*\d+\s+of\s+\d+\s*--|\d+\s*\/\s*\d+)$/i.test(trimmed)) {
+  if (/^(page\s+\d+(\s+of\s+\d+)?|\d+\s*\|\s*p\s*a\s*g\s*e|--\s*\d+\s+of\s+\d+\s*--|\d+\s*\/\s*\d+|\d{1,4})$/i.test(trimmed)) {
     return true;
   }
   if (/\bPage\s*$/i.test(trimmed) || /^[A-Za-z0-9\s,\-:·•|&]+\s+Page$/i.test(trimmed)) {
@@ -393,6 +510,11 @@ export function isDocumentMetadataOrNav(text: string): boolean {
 
   // 7. Standalone broken numbering labels (e.g. "1.1.2 ", "Section 3.1", "Chapter IV")
   if (/^(\d+(\.\d+)*|[A-Za-z]\)|[ivxlcdm]+\.)\s*$/i.test(trimmed)) {
+    return true;
+  }
+
+  // 8. Acknowledgements, dedications, declarations, and bibliographic/URL lines
+  if (isNonSubstantiveOrAckSentence(trimmed)) {
     return true;
   }
 
@@ -613,8 +735,12 @@ export function extractEnglishEducationalTopic(sentence: string, chunk?: Documen
     ''
   ).trim();
 
-  // Reject imperative instructions / action items immediately
-  if (isImperativeOrActionPhrase(clean)) {
+  // Reject imperative instructions, acknowledgements, meta-statements, or unresolved pronouns immediately
+  if (
+    isImperativeOrActionPhrase(clean) ||
+    isNonSubstantiveOrAckSentence(clean) ||
+    hasUnresolvedLeadingPronoun(clean)
+  ) {
     return null;
   }
 
@@ -666,7 +792,7 @@ export function extractEnglishEducationalTopic(sentence: string, chunk?: Documen
   // 2. Comprehensive subject clause detection before primary finite verb
   // Note: Supports compound subjects joined by commas and 'and'/'or' without cutting mid-subject.
   const verbList =
-    'is|are|was|were|has|have|had|estimates?|estimated|makes?|made|remains?|remained|becomes?|became|shows?|showed|shown|represents?|functions?|operates?|combines?|combined|simulates?|records?|provides?|enables?|requires?|demonstrates?|serves?|facilitates?|acts?|refers?|constitutes?|enhances?|reduces?|increases?|optimizes?|exceeds?|maintains?|replicates?|treats?|stabilizes?|produces?|decreases?|prevents?|delivers?|captures?|preserves?|filters?|integrates?|manages?|collects?|recharges?|regulates?|mitigates?|protects?|transforms?|generates?|suppresses?|creates?|applies?|improves?|stores?|retains?|distributes?|measures?|supports?|utilizes?|uses?|causes?|leads?|affects?|depends?|wastes?|absorbs?|puts?|follows?|places?|leaves?|allows?|helps?|involves?|impedes?|eliminates?';
+    'is|are|was|were|has|have|had|estimates?|estimated|makes?|made|remains?|remained|becomes?|became|shows?|showed|shown|represents?|functions?|operates?|combines?|combined|simulates?|records?|recorded|provides?|provided|enables?|enabled|requires?|required|demonstrates?|demonstrated|serves?|served|facilitates?|facilitated|acts?|acted|refers?|referred|constitutes?|constituted|enhances?|enhanced|reduces?|reduced|increases?|increased|optimizes?|optimized|exceeds?|exceeded|maintains?|maintained|replicates?|replicated|treats?|treated|stabilizes?|stabilized|produces?|produced|decreases?|decreased|prevents?|prevented|delivers?|delivered|captures?|captured|preserves?|preserved|filters?|filtered|integrates?|integrated|manages?|managed|collects?|collected|recharges?|recharged|regulates?|regulated|mitigates?|mitigated|protects?|protected|transforms?|transformed|generates?|generated|suppresses?|suppressed|creates?|created|applies?|applied|improves?|improved|stores?|stored|retains?|retained|distributes?|distributed|measures?|measured|supports?|supported|utilizes?|utilized|uses?|used|causes?|caused|leads?|led|affects?|affected|depends?|depended|wastes?|wasted|absorbs?|absorbed|puts?|follows?|followed|places?|placed|leaves?|left|allows?|allowed|helps?|helped|involves?|involved|impedes?|impeded|eliminates?|eliminated|verifies?|verify|verified|validates?|validate|validated|authenticates?|authenticated|authorizes?|authorized|encrypts?|encrypted|decrypts?|decrypted|computes?|computed|calculates?|calculated|evaluates?|evaluated|compares?|compared|partitions?|partitioned|segments?|segmented|indexes?|indexed|renders?|rendered|shapes?|shaped|formats?|formatted|serializes?|serialized|parses?|parsed|extracts?|extracted|detects?|detected|identifies?|identified|classifies?|classified|tracks?|tracked|monitors?|monitored|snapshots?|restores?|restored|transmits?|transmitted|routes?|routed|balances?|balanced|caches?|cached|executes?|executed|compiles?|compiled|conducts?|conducted|determines?|determined|establishes?|established|defines?|defined|describes?|described|explains?|explained|illustrates?|illustrated|examines?|examined|analyzes?|analyzed|synthesizes?|synthesized|addresses?|addressed|resolves?|resolved|minimizes?|minimized|maximizes?|maximized|separates?|separated|isolates?|isolated|connects?|connected|links?|linked|maps?|mapped|transfers?|transferred|converts?|converted|translates?|translated|encodes?|encoded|decodes?|decoded|compresses?|compressed|aggregates?|aggregated|synchronizes?|synchronized|coordinates?|coordinated|orchestrates?|orchestrated|schedules?|scheduled|allocates?|allocated|triggers?|triggered|enforces?|enforced|restricts?|restricted|guarantees?|guaranteed|achieves?|achieved|exhibits?|exhibited|contains?|contained|consists?|consisted|comprises?|comprised|includes?|included|emphasizes?|emphasized|consults?|consulted|reflects?|reflected|distinguishes?|distinguished|differentiates?|differentiated|encourages?|encouraged|promotes?|promoted|fosters?|fostered|shapes?|shaped|influences?|influenced|contributes?|contributed|explores?|explored|highlights?|highlighted|confirms?|confirmed|recognizes?|recognized|recognises?|recognised';
   const verbRegex = new RegExp(`^([A-Z][A-Za-z0-9\\s,\\-–—'"()/.]{3,110}?)\\s+(${verbList})\\b`, 'i');
   const verbMatch = prepClean.match(verbRegex);
 
@@ -1522,8 +1648,9 @@ export const ENGLISH_CONCEPT_CATALOG: Array<{
 ];
 
 /**
- * Generates 3 concept-specific, parallel, and semantically coherent distractors in English.
- * Guarantees that every distractor is strictly about the subject concept, avoiding topic contamination.
+ * Generates 3 concept-specific, parallel, and semantically coherent distractors in English
+ * from the domain concept catalog. Returns null when no catalog entry matches so caller
+ * can select genuine distinct document-grounded distractors or domain-matched contrasts.
  */
 export function generateConceptSpecificEnglishDistractors(
   sentence: string,
@@ -1572,35 +1699,112 @@ export function generateConceptSpecificEnglishDistractors(
     }
   }
 
-  // Tier 2: Algorithmic Concept Distractor Generator
-  // Formulate 3 parallel plausible contrasting statements strictly about the subjectTopic
-  if (subjectTopic && subjectTopic.length >= 3 && isValidEducationalTopic(subjectTopic)) {
-    const topicCapitalized = subjectTopic.charAt(0).toUpperCase() + subjectTopic.slice(1);
-    const isPlural = /\b(systems|meters|sensors|transducers|technologies|methods|practices|networks|tools|controllers|algorithms|valves|pipes|pumps|facilities|models|devices)\b$/i.test(subjectTopic) ||
-      (/\b(and|or)\b/i.test(subjectTopic) && !/\b(research and development|monitoring and control)\b/i.test(subjectTopic));
-    const isHardwareDevice = /\b(meter|sensor|transducer|controller|twin|pump|valve|filter|actuator)\b/i.test(subjectTopic) && !isPlural;
-    const formattedTopic = isHardwareDevice ? `${topicCapitalized} systems` : topicCapitalized;
-    const verbOperate = (isPlural || isHardwareDevice) ? 'operate' : 'operates';
-    const verbRely = (isPlural || isHardwareDevice) ? 'rely' : 'relies';
-    const verbRestrict = (isPlural || isHardwareDevice) ? 'restrict' : 'restricts';
+  return null;
+}
 
-    const algorithmicDistractors = [
-      `${formattedTopic} ${verbOperate} primarily through manual or localized procedures without automated continuous execution.`,
-      `${formattedTopic} ${verbRely} on passive static structural elements rather than dynamic real-time modulation.`,
-      `${formattedTopic} ${verbRestrict} functional activity to localized offline parameters without centralized systemic integration.`,
-    ];
-
-    const validAlgorithmic = algorithmicDistractors.filter((d) => {
-      const normD = d.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-      return normD !== normAns && !usedOptions.has(normD);
-    });
-
-    if (validAlgorithmic.length >= 3) {
-      return validAlgorithmic.slice(0, 3);
-    }
+/**
+ * Generates natural, grammatically sound, domain-appropriate English contrasting distractors
+ * only when distinct unused document sentences are exhausted (e.g. small multi-group test docs).
+ */
+function generateNaturalDomainContrastDistractors(
+  sentence: string,
+  subjectTopic: string,
+  seqIndex: number,
+  variantIndex: number,
+  usedOptions: Set<string>,
+  cleanAnswer: string
+): string[] | null {
+  if (!subjectTopic || subjectTopic.length < 3 || !isValidEducationalTopic(subjectTopic)) {
+    return null;
   }
 
-  return null;
+  const normAns = (cleanAnswer || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  const topicCap = subjectTopic.charAt(0).toUpperCase() + subjectTopic.slice(1);
+  const lowerCombined = `${subjectTopic} ${sentence}`.toLowerCase();
+
+  const isPersonOrHistorical =
+    /\b(prophet|caliph|al-shifa|ibn|bint|umar|hafsa|scholar|historian|educator|author|researcher|administrator|judge|women|companions|community)\b/i.test(
+      lowerCombined
+    );
+  const isBiologyScience =
+    /\b(cell|membrane|protein|enzyme|glucose|atp|adenosine|mitochondri|chloroplast|ribosom|nucleus|chromatin|dna|rna|oxygen|photosynthesis|glycolysis|pyruvate|eukaryotic|cytosol|organelle|thylakoid)\b/i.test(
+      lowerCombined
+    );
+  const isSoftwareTech =
+    /\b(database|sqlite|server|client|api|token|jwt|auth|authentication|react|frontend|backend|pdf|docx|parser|algorithm|model|network|software|module|component|pipeline|validation|interface|endpoint|query|cache|file|storage|encryption|webhook)\b/i.test(
+      lowerCombined
+    );
+
+  const isPlural =
+    /\b(systems|meters|sensors|transducers|technologies|methods|practices|networks|tools|controllers|algorithms|valves|pipes|pumps|facilities|models|devices|complexes|membranes|ribosomes|mitochondria|women|companions|historians|accounts|findings)\b$/i.test(
+      subjectTopic
+    ) ||
+    (/\b(and|or)\b/i.test(subjectTopic) && !/\b(research and development|monitoring and control)\b/i.test(subjectTopic));
+
+  let pool: string[];
+
+  if (isPersonOrHistorical) {
+    pool = [
+      `${topicCap} discouraged formal instruction and avoided sharing practical expertise within the community.`,
+      `${topicCap} rejected established ethical standards in favor of unregulated private commercial gain.`,
+      `${topicCap} worked strictly in isolation and refrained from mentoring students or advising civic leaders.`,
+      `${topicCap} relied exclusively on written decrees while prohibiting direct teaching and practical service.`,
+      `${topicCap} opposed public educational initiatives and restricted literacy instruction to closed hereditary circles.`,
+      `${topicCap} dismissed historical record-keeping and discouraged peer consultation on community affairs.`,
+    ];
+  } else if (isBiologyScience) {
+    const vBreak = isPlural ? 'break' : 'breaks';
+    const vHalt = isPlural ? 'halt' : 'halts';
+    const vConsume = isPlural ? 'consume' : 'consumes';
+    const vPrevent = isPlural ? 'prevent' : 'prevents';
+    const vBypass = isPlural ? 'bypass' : 'bypasses';
+    pool = [
+      `${topicCap} ${vBreak} down surrounding cellular membranes indiscriminately instead of supporting regulated metabolic pathways.`,
+      `${topicCap} ${vHalt} intracellular molecular transport completely during normal aerobic respiration.`,
+      `${topicCap} ${vConsume} cellular energy reserves solely to degrade structural macromolecules without synthesizing products.`,
+      `${topicCap} ${vPrevent} enzymatic reaction coupling across biological compartments during active metabolism.`,
+      `${topicCap} ${vBypass} selective membrane regulation and allow uncontrolled passive diffusion of macromolecular complexes.`,
+    ];
+  } else if (isSoftwareTech) {
+    const vDiscard = isPlural ? 'discard' : 'discards';
+    const vRestrict = isPlural ? 'restrict' : 'restricts';
+    const vBypass = isPlural ? 'bypass' : 'bypasses';
+    const vExpose = isPlural ? 'expose' : 'exposes';
+    const vDisable = isPlural ? 'disable' : 'disables';
+    const vAccept = isPlural ? 'accept' : 'accepts';
+    const vPrevent = isPlural ? 'prevent' : 'prevents';
+    pool = [
+      `${topicCap} ${vDiscard} active state records after each request rather than persisting data reliably across sessions.`,
+      `${topicCap} ${vRestrict} execution to static unparsed text while blocking structured validation workflows.`,
+      `${topicCap} ${vBypass} access verification rules and ${vExpose} protected resources directly to unverified callers.`,
+      `${topicCap} ${vDisable} automated error checking and ${vAccept} malformed inputs without raising diagnostic warnings.`,
+      `${topicCap} ${vPrevent} cross-module data synchronization by keeping configuration values hardcoded in client templates.`,
+    ];
+  } else {
+    const vIgnore = isPlural ? 'ignore' : 'ignores';
+    const vRely = isPlural ? 'rely' : 'relies';
+    const vPrevent = isPlural ? 'prevent' : 'prevents';
+    const vEliminate = isPlural ? 'eliminate' : 'eliminates';
+    const vLimit = isPlural ? 'limit' : 'limits';
+    const vSubstitute = isPlural ? 'substitute' : 'substitutes';
+    pool = [
+      `${topicCap} ${vIgnore} documented evidence and ${vRely} strictly on unverified assumptions without systematic review.`,
+      `${topicCap} ${vPrevent} structured comparison across source records and ${vEliminate} traceability to primary evidence.`,
+      `${topicCap} ${vLimit} evaluation to isolated surface observations without examining underlying causal relationships.`,
+      `${topicCap} ${vSubstitute} arbitrary heuristics for verifiable criteria during practical implementation.`,
+      `${topicCap} ${vEliminate} feedback loops required to verify accuracy against documented source standards.`,
+    ];
+  }
+
+  const rotatedOffset = (seqIndex + variantIndex) % pool.length;
+  const rotatedPool = [...pool.slice(rotatedOffset), ...pool.slice(0, rotatedOffset)];
+
+  const valid = rotatedPool.filter((d) => {
+    const normD = d.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+    return normD !== normAns && !usedOptions.has(normD);
+  });
+
+  return valid.length >= 3 ? valid.slice(0, 3) : null;
 }
 
 export function cleanDocumentContentForRag(rawText: string): { cleanedText: string; isOnlyMetadata: boolean; substantiveWordsCount: number } {
@@ -1664,11 +1868,12 @@ export function cleanDocumentContentForRag(rawText: string): { cleanedText: stri
   ];
 
   const standaloneHeaderLabels = [
-    /^\s*(Instructor|Professor|Teacher|Written(\s*by)?|Author|Student(\s*Name)?|Title|Assignment(\s*Title)?|Due\s*Date|Submission\s*Date|Course|Subject|Table of Contents|Contents|Index)\s*[:：]?\s*$/i,
+    /^\s*(Instructor|Professor|Teacher|Written(\s*by)?|Author|Student(\s*Name)?|Title|Assignment(\s*Title)?|Due\s*Date|Submission\s*Date|Course|Subject|Table of Contents|Contents|Index|Acknowledgements?|Acknowledgments?|Dedication|Declaration|Certificate)\s*[:：]?\s*$/i,
     /^\s*(تهیه\s*کننده|استاد(\s*راهنما)?|دانشگاه|دانشکده|دیپارتمنت|رشته|مضمون|صنف|سال(\s*تحصیلی)?|تاریخ|نویسنده|مؤلف|عنوان(\s*تحقیق)?|فهرست\s*مطالب)\s*[:：]?\s*$/i,
   ];
 
   let skipNextNonEmpty = false;
+  let inFrontMatterSection = false;
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -1681,6 +1886,27 @@ export function cleanDocumentContentForRag(rawText: string): { cleanedText: stri
     if (skipNextNonEmpty) {
       skipNextNonEmpty = false;
       continue;
+    }
+
+    // Track explicit front-matter sections (Acknowledgements, Dedication, Declaration, Certificate)
+    if (/^(?:\d+\.?\s+|[ivxlcdm]+\.?\s+)?(acknowledg(e)?ments?|dedication|declaration|certificate|prefatory\s+note)\s*[:：]?\s*$/i.test(line)) {
+      inFrontMatterSection = true;
+      continue;
+    }
+    if (inFrontMatterSection) {
+      // Exit front-matter skipping when reaching a genuine chapter or technical section heading
+      if (
+        /^(?:chapter|section|part|unit)\s+(?:\d+|[ivxlcdm]+|[A-Za-z])/i.test(line) &&
+        !/acknowledg|dedication|declaration|certificate|table\s+of\s+contents/i.test(line)
+      ) {
+        inFrontMatterSection = false;
+      } else if (/^\d+(?:\.\d+)*\s+[A-Za-z]/i.test(line) && !/acknowledg|dedication|declaration|certificate/i.test(line)) {
+        inFrontMatterSection = false;
+      } else if (isNonSubstantiveOrAckSentence(line) || isDocumentMetadataOrNav(line) || hasUnresolvedLeadingPronoun(line) || line.split(/\s+/).length < 25) {
+        continue;
+      } else {
+        inFrontMatterSection = false;
+      }
     }
 
     if (isDocumentMetadataOrNav(line)) {
@@ -1706,7 +1932,7 @@ export function cleanDocumentContentForRag(rawText: string): { cleanedText: stri
     }
     if (isMetaPattern) continue;
 
-    if (isHeadingOrFragment(line) || isLineHeadingOrCallout(line)) {
+    if (isHeadingOrFragment(line) || isLineHeadingOrCallout(line) || isNonSubstantiveOrAckSentence(line)) {
       continue;
     }
 
@@ -1843,7 +2069,7 @@ export function extractCleanSubstantiveSentences(rawText: string, isPersian: boo
       if (/\b(page|chapter)\s+\d+\b/i.test(s) && s.length < 50) {
         continue;
       }
-      if (isHeadingOrFragment(s) || isDocumentMetadataOrNav(s) || isImperativeOrActionPhrase(s) || isDanglingOrIncompleteFragment(s)) {
+      if (isHeadingOrFragment(s) || isDocumentMetadataOrNav(s) || isImperativeOrActionPhrase(s) || isDanglingOrIncompleteFragment(s) || isNonSubstantiveOrAckSentence(s) || hasUnresolvedLeadingPronoun(s)) {
         continue;
       }
 
@@ -1873,6 +2099,8 @@ export function extractCleanSubstantiveSentences(rawText: string, isPersian: boo
         isDocumentMetadataOrNav(s) ||
         isImperativeOrActionPhrase(s) ||
         isDanglingOrIncompleteFragment(s) ||
+        isNonSubstantiveOrAckSentence(s) ||
+        hasUnresolvedLeadingPronoun(s) ||
         /\b(Hamza Safi|Madina Kakar|Page safety)\b/i.test(s)
       ) {
         continue;
@@ -1975,6 +2203,10 @@ export function extractTopicRelevantDistractors(
   // --- TIER 2: DOCUMENT-GROUNDED FALLBACK WITH SEMANTIC TOPIC FILTERING ---
   const normCurrent = normalizeQuestionText(cleanCurrent);
   const currentTokens = getQuestionTokens(cleanCurrent);
+  const resolvedEnglishTopic = (!isPersian && !isPashto)
+    ? (subjectTopic || extractEnglishEducationalTopic(cleanCurrent) || '')
+    : (subjectTopic || '');
+  const normTopicLower = resolvedEnglishTopic.toLowerCase().trim();
   const allCandidatePool: string[] = [];
   const seenCandidates = new Set<string>();
 
@@ -1984,6 +2216,11 @@ export function extractTopicRelevantDistractors(
     for (const s of sents) {
       if (s.endsWith('?') || /^Why\b/i.test(s) || isHeadingOrFragment(s) || isDocumentMetadataOrNav(s)) continue;
       if (isImperativeOrActionPhrase(s) || isDanglingOrIncompleteFragment(s)) continue;
+      if (!isPersian && !isPashto) {
+        if (isNonSubstantiveOrAckSentence(s) || hasUnresolvedLeadingPronoun(s) || isVagueGenericPlatitude(s)) continue;
+        // Avoid picking another sentence that literally teaches the same subjectTopic
+        if (normTopicLower.length >= 4 && s.toLowerCase().includes(normTopicLower)) continue;
+      }
 
       const norm = normalizeQuestionText(s);
       if (
@@ -1992,13 +2229,16 @@ export function extractTopicRelevantDistractors(
         !norm.includes('contradicts established principles') &&
         !norm.includes('outdated hypothesis') &&
         !norm.includes('theoretical models without') &&
+        !norm.includes('passive static structural elements') &&
+        !norm.includes('dynamic real time modulation') &&
+        !norm.includes('localized offline parameters') &&
         !norm.includes('تأیید گزاره متن') &&
         !norm.includes('سلب مسئولیت نهادهای') &&
         !norm.includes('نقض تعهدات آموزشی')
       ) {
         const tokens = getQuestionTokens(s);
         const sim = computeJaccardSimilarity(currentTokens, tokens);
-        if (sim < 0.65) {
+        if (sim < 0.52) {
           let formatted = isPashto
             ? formatConcisePashtoOption(s)
             : isPersian
@@ -2006,7 +2246,7 @@ export function extractTopicRelevantDistractors(
             : s.trim();
           formatted = sanitizeEducationalText(formatted);
 
-          if (!isPersian && !isPashto && formatted.length > 165) {
+          if (!isPersian && !isPashto && (formatted.length > 165 || formatted.length < 30)) {
             continue;
           }
 
@@ -2034,21 +2274,46 @@ export function extractTopicRelevantDistractors(
     }
   }
 
-  // First priority: pick candidates that have NOT been used in other questions
-  const unusedCandidates = allCandidatePool.filter((c) => !usedOptions.has(normalizeQuestionText(c)));
+  // First priority: pick UNUSED candidates from document that aren't duplicates of each other
+  const unusedCandidates = allCandidatePool.filter((c) => {
+    const normKey = c.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    return !usedOptions.has(normKey) && !usedOptions.has(normalizeQuestionText(c));
+  });
   const chosen: string[] = [];
 
   const offset = (seqIndex * 3 + variantIndex) % Math.max(1, unusedCandidates.length);
   for (let i = 0; i < unusedCandidates.length && chosen.length < 3; i++) {
     const idx = (offset + i) % unusedCandidates.length;
     const cand = unusedCandidates[idx];
-    if (!chosen.includes(cand)) {
+    const candTokens = getQuestionTokens(cand);
+    const tooCloseToChosen = chosen.some((ex) => computeJaccardSimilarity(candTokens, getQuestionTokens(ex)) >= 0.55);
+    if (!chosen.includes(cand) && !tooCloseToChosen) {
       chosen.push(cand);
     }
   }
 
-  // If still need more to reach 3, take from the general pool ensuring no duplicate within this question
-  if (chosen.length < 3) {
+  if (chosen.length >= 3) {
+    return chosen.slice(0, 3);
+  }
+
+  // Tier 3 (English only): when unused document sentences are insufficient for multi-group quotas,
+  // build clean, grammatical, domain-matched contrasting statements without reusing options across MCQs.
+  if (!isPersian && !isPashto && resolvedEnglishTopic) {
+    const domainContrast = generateNaturalDomainContrastDistractors(
+      cleanCurrent,
+      resolvedEnglishTopic,
+      seqIndex,
+      variantIndex,
+      usedOptions,
+      cleanAnswer
+    );
+    if (domainContrast && domainContrast.length >= 3) {
+      return domainContrast.slice(0, 3);
+    }
+  }
+
+  // Final RTL fallback if general pool has items
+  if ((isPersian || isPashto) && chosen.length < 3) {
     const generalOffset = (seqIndex + variantIndex) % Math.max(1, allCandidatePool.length);
     for (let i = 0; i < allCandidatePool.length && chosen.length < 3; i++) {
       const idx = (generalOffset + i) % allCandidatePool.length;
@@ -2205,18 +2470,22 @@ export function validateAcademicQuestion(
   if (stem.length < 15) {
     errors.push(`Question text is too short (${stem.length} chars).`);
   }
-  if (isHeadingOrFragment(stem)) {
-    errors.push('Question text is a heading, fragment, or incomplete sentence.');
-  }
-
   // 2. Language purity
   const langCheck = validateQuestionLanguage(question, expectedLang);
   if (!langCheck.valid) {
     errors.push(langCheck.reason || 'Failed language purity validation.');
   }
 
-  // 3. Question type specifics
   const qType = String(question.question_type || '').toLowerCase();
+  if (isHeadingOrFragment(stem)) {
+    errors.push('Question text is a heading, fragment, or incomplete sentence.');
+  }
+  if (
+    /\b(?:of|about|regarding|for|governing)\s+(?:His|Her|Their|Its|My|Our|Your)\s+[a-z]+/i.test(stem) ||
+    /^(?:True or False|Complete the statement):\s*(?:His|Her|Their|Its|He|She|They|It)\s+/i.test(stem)
+  ) {
+    errors.push('Question text contains an ambiguous unresolved pronoun reference.');
+  }
   if (qType === 'mcq') {
     if (!Array.isArray(question.options) || question.options.length !== 4) {
       errors.push(`MCQ must have exactly 4 options, found ${question.options?.length || 0}.`);
@@ -2224,6 +2493,14 @@ export function validateAcademicQuestion(
       const emptyOpt = question.options.some((o: string) => !o || String(o).trim().length < 2);
       if (emptyOpt) {
         errors.push('MCQ contains empty or invalid option choice.');
+      }
+      const hasRoboticGibberish = question.options.some((o: string) =>
+        /\b(passive static structural elements|dynamic real-time modulation|localized offline parameters|without centralized systemic integration)\b/i.test(
+          String(o)
+        )
+      );
+      if (hasRoboticGibberish) {
+        errors.push('MCQ contains unnatural robotic distractor text.');
       }
       const uniqueOpts = new Set(question.options.map((o: string) => String(o).trim().toLowerCase()));
       if (uniqueOpts.size < 4) {
@@ -2244,6 +2521,9 @@ export function validateAcademicQuestion(
     if (!/\[_{3,}|\[blank\]|\[_____\]/.test(stem)) {
       errors.push('Fill-in-the-blank question stem must contain a valid blank placeholder like [_____].');
     }
+    if (/-[\[_]|[_\]]-|\[_+\]['’]s\b/.test(stem)) {
+      errors.push('Fill-in-the-blank placeholder splits a hyphenated word or possessive awkwardly.');
+    }
     if (!question.correct_answer || String(question.correct_answer).trim().length === 0) {
       errors.push('Fill-in-the-blank question must specify the target blank answer.');
     }
@@ -2254,11 +2534,15 @@ export function validateAcademicQuestion(
     if (!question.explanation || String(question.explanation).trim().length < 10) {
       errors.push(`${qType} must provide an explicit marking rubric in explanation.`);
     }
+  } else {
+    errors.push(`Unsupported question_type: ${qType}`);
   }
 
   // 4. Grounding verification
   if (!question.source_evidence || String(question.source_evidence).trim().length < 15) {
     errors.push('Question lacks valid source_evidence citation from the educational text.');
+  } else if (isNonSubstantiveOrAckSentence(String(question.source_evidence))) {
+    errors.push('Question source_evidence comes from non-educational acknowledgement or metadata text.');
   }
 
   return {
