@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { AcademicPaperPreview } from './AcademicPaperPreview';
 import { AiResistantReviewModal } from './AiResistantReviewModal';
-import { authFetch, getAuthToken, getGuestSessionId } from '../utils/auth';
+import { authFetch } from '../utils/auth';
 
 interface DocumentInfo {
   id: string;
@@ -178,21 +178,84 @@ export function ExamWorkspace({
   const [exportTarget, setExportTarget] = useState<'both' | 'exam' | 'answer_key'>('both');
   const [exportScope, setExportScope] = useState<'current' | 'all'>('current');
   const [includeProvenance, setIncludeProvenance] = useState<boolean>(true);
+  const [isExporting, setIsExporting] = useState<'docx' | 'pdf' | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const extractApiErrorMessage = async (res: Response, fallback: string): Promise<string> => {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const errData = await res.json().catch(() => null);
+      if (errData && typeof errData === 'object') {
+        if (typeof errData.detail === 'string' && errData.detail.trim()) return errData.detail.trim();
+        if (typeof errData.message === 'string' && errData.message.trim()) return errData.message.trim();
+        if (typeof errData.error === 'string' && errData.error.trim()) return errData.error.trim();
+      }
+    } else {
+      const text = await res.text().catch(() => '');
+      const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (cleanText && cleanText.length < 180) {
+        return `${fallback} (HTTP ${res.status}: ${cleanText})`;
+      }
+    }
+    return `${fallback} (HTTP ${res.status})`;
+  };
+
+  const downloadExamExport = async (
+    format: 'docx' | 'pdf',
+    targetOverride?: 'both' | 'exam' | 'answer_key',
+    scopeOverride?: 'current' | 'all',
+    includeRefsOverride?: boolean
+  ) => {
+    if (!activeExam || isExporting) return;
+    setIsExporting(format);
+    setExportError(null);
+
+    const effectiveTarget = targetOverride ?? exportTarget;
+    const effectiveScope = scopeOverride ?? exportScope;
+    const effectiveIncludeRefs = includeRefsOverride ?? includeProvenance;
+
+    const selectedGroup = activeExam.groups[activeGroupIndex] || activeExam.groups[0];
+    const currentGroupId = effectiveScope === 'all' ? '' : (selectedGroup?.id || '');
+    const params = new URLSearchParams({
+      target: effectiveTarget,
+      include_references: String(effectiveIncludeRefs),
+    });
+    if (currentGroupId) {
+      params.set('group_id', currentGroupId);
+    }
+
+    const url = `/api/exams/${encodeURIComponent(activeExam.id)}/export/${format}?${params.toString()}`;
+
+    try {
+      const res = await authFetch(url);
+      if (!res.ok) {
+        const msg = await extractApiErrorMessage(res, `Failed to export ${format.toUpperCase()}`);
+        throw new Error(msg);
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition') || '';
+      const filenameMatch = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";\n]+)"?/i);
+      const downloadName = filenameMatch?.[1]?.trim() || `Exam_${activeExam.id}.${format}`;
+
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err: any) {
+      console.error(`Export ${format} error:`, err);
+      setExportError(err?.message || `Failed to export ${format.toUpperCase()} document.`);
+    } finally {
+      setIsExporting(null);
+    }
+  };
 
   const handleExport = (format: 'docx' | 'pdf') => {
-    if (!activeExam) return;
-    const currentGroupId = exportScope === 'all' ? '' : activeExam.groups[activeGroupIndex]?.id || '';
-    let url = `/api/exams/${activeExam.id}/export/${format}?target=${exportTarget}&include_references=${includeProvenance}`;
-    if (currentGroupId) {
-      url += `&group_id=${currentGroupId}`;
-    }
-    const token = getAuthToken();
-    if (token) {
-      url += `&token=${encodeURIComponent(token)}`;
-    } else {
-      url += `&session_id=${encodeURIComponent(getGuestSessionId())}`;
-    }
-    window.location.href = url;
+    void downloadExamExport(format);
   };
 
   // Question editing state
@@ -412,12 +475,31 @@ export function ExamWorkspace({
     try {
       const res = await authFetch('/api/exams');
       if (res.ok) {
-        const data = await res.json();
+        const data: Exam[] = await res.json();
         if (onExamsUpdated) {
           onExamsUpdated(data);
         }
-        if (data.length > 0 && !activeExamIdRef.current && !externalActiveExamIdRef.current) {
+        const currentActiveId = activeExamIdRef.current;
+        if (currentActiveId && !externalActiveExamIdRef.current) {
+          const matchingExam = data.find((e) => e.id === currentActiveId);
+          if (matchingExam) {
+            setActiveExam(matchingExam);
+            setActiveGroupIndex((prevIdx) =>
+              matchingExam.groups.length > 0 ? Math.min(prevIdx, matchingExam.groups.length - 1) : 0
+            );
+            loadAnswerKeys(matchingExam.id);
+          } else if (data.length > 0) {
+            setActiveExam(data[0]);
+            setActiveGroupIndex(0);
+            loadAnswerKeys(data[0].id);
+          } else {
+            setActiveExam(null);
+            setActiveGroupIndex(0);
+            setStep(1);
+          }
+        } else if (data.length > 0 && !currentActiveId && !externalActiveExamIdRef.current) {
           setActiveExam(data[0]);
+          setActiveGroupIndex(0);
           loadAnswerKeys(data[0].id);
         }
       }
@@ -583,7 +665,7 @@ export function ExamWorkspace({
     setEditMarks(q.marks);
 
     let initialOptions: string[] = [];
-    if (q.question_type === 'mcq') {
+    if ((q.question_type || '').toLowerCase() === 'mcq') {
       const cleanOpts = (q.options || [])
         .map((o) => String(o).trim())
         .filter((o) => o.length > 0 && !/^New Option\b/i.test(o) && !/^گزینه جدید/i.test(o));
@@ -674,11 +756,17 @@ export function ExamWorkspace({
       if (isMcq && editOptions && editOptions.length === 4) {
         payload.options = editOptions.map((o) => o.trim());
         payload.correct_answer = editCorrectAnswer.trim();
-      } else if (editCorrectAnswer) {
-        payload.correct_answer = editCorrectAnswer.trim();
+      } else {
+        const trimmedNonMcqAns = editCorrectAnswer.trim();
+        if (!trimmedNonMcqAns) {
+          setEditError('Correct answer cannot be blank.');
+          setIsSavingEdit(false);
+          return;
+        }
+        payload.correct_answer = trimmedNonMcqAns;
       }
 
-      const res = await authFetch(`/api/exams/${activeExam.id}/questions/${questionId}`, {
+      const res = await authFetch(`/api/exams/${encodeURIComponent(activeExam.id)}/questions/${encodeURIComponent(questionId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -687,7 +775,7 @@ export function ExamWorkspace({
       if (res.ok) {
         const updatedQ: Question = await res.json();
         // Fetch fresh exam state to guarantee synchronization across all groups and variants
-        const examRes = await authFetch(`/api/exams/${activeExam.id}`);
+        const examRes = await authFetch(`/api/exams/${encodeURIComponent(activeExam.id)}`);
         if (examRes.ok) {
           const freshExam = await examRes.json();
           setActiveExam(freshExam);
@@ -712,9 +800,10 @@ export function ExamWorkspace({
         setEditingQuestionId(null);
         setEditError(null);
         await loadAnswerKeys(activeExam.id);
+        fetchExams();
       } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to save question edits');
+        const msg = await extractApiErrorMessage(res, 'Failed to save question edits');
+        throw new Error(msg);
       }
     } catch (e: any) {
       console.error('Failed to update question:', e);
@@ -730,14 +819,17 @@ export function ExamWorkspace({
     setDeleteError(null);
 
     try {
-      const res = await authFetch(`/api/exams/${activeExam.id}/questions/${deletingQuestion.id}`, {
-        method: 'DELETE',
-      });
+      const res = await authFetch(
+        `/api/exams/${encodeURIComponent(activeExam.id)}/questions/${encodeURIComponent(deletingQuestion.id)}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       if (res.ok) {
         const data = await res.json();
         // Fetch fresh exam state from server to ensure perfect synchronization
-        const examRes = await authFetch(`/api/exams/${activeExam.id}`);
+        const examRes = await authFetch(`/api/exams/${encodeURIComponent(activeExam.id)}`);
         if (examRes.ok) {
           const freshExam = await examRes.json();
           setActiveExam(freshExam);
@@ -771,8 +863,8 @@ export function ExamWorkspace({
         setDeletingQuestion(null);
         fetchExams();
       } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to delete question from exam.');
+        const msg = await extractApiErrorMessage(res, 'Failed to delete question from exam.');
+        throw new Error(msg);
       }
     } catch (err: any) {
       console.error('Delete question error:', err);
@@ -801,11 +893,14 @@ export function ExamWorkspace({
     const newQuestionIds = questionsCopy.map((q) => q.id);
 
     try {
-      const res = await authFetch(`/api/exams/${activeExam.id}/groups/${currentGroup.id}/reorder`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_ids: newQuestionIds }),
-      });
+      const res = await authFetch(
+        `/api/exams/${encodeURIComponent(activeExam.id)}/groups/${encodeURIComponent(currentGroup.id)}/reorder`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question_ids: newQuestionIds }),
+        }
+      );
 
       if (res.ok) {
         const reorderedQuestions: Question[] = await res.json();
@@ -826,9 +921,10 @@ export function ExamWorkspace({
           };
         });
         await loadAnswerKeys(activeExam.id);
+        fetchExams();
       } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to update question order on server.');
+        const msg = await extractApiErrorMessage(res, 'Failed to update question order on server.');
+        throw new Error(msg);
       }
     } catch (err: any) {
       console.error('Reorder question error:', err);
@@ -849,16 +945,19 @@ export function ExamWorkspace({
         payload.instructions = regenerateInstructions.trim();
       }
 
-      const res = await authFetch(`/api/exams/${activeExam.id}/questions/${questionId}/regenerate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await authFetch(
+        `/api/exams/${encodeURIComponent(activeExam.id)}/questions/${encodeURIComponent(questionId)}/regenerate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (res.ok) {
         const updatedQ: Question = await res.json();
         // Fetch fresh exam state from server to guarantee exact database synchronization
-        const examRes = await authFetch(`/api/exams/${activeExam.id}`);
+        const examRes = await authFetch(`/api/exams/${encodeURIComponent(activeExam.id)}`);
         if (examRes.ok) {
           const freshExam = await examRes.json();
           setActiveExam(freshExam);
@@ -883,9 +982,10 @@ export function ExamWorkspace({
         setPromptRegenerateQuestionId(null);
         setRegenerateInstructions('');
         await loadAnswerKeys(activeExam.id);
+        fetchExams();
       } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to regenerate question from source evidence.');
+        const msg = await extractApiErrorMessage(res, 'Failed to regenerate question from source evidence.');
+        throw new Error(msg);
       }
     } catch (err: any) {
       console.error('Regenerate question error:', err);
@@ -1556,7 +1656,10 @@ export function ExamWorkspace({
                 </button>
 
                 <button
-                  onClick={() => setShowExportModal(true)}
+                  onClick={() => {
+                    setExportError(null);
+                    setShowExportModal(true);
+                  }}
                   className="col-span-2 sm:col-auto px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[44px] sm:min-h-[38px]"
                 >
                   <Download className="w-3.5 h-3.5 shrink-0" />
@@ -1565,6 +1668,42 @@ export function ExamWorkspace({
               </div>
             </div>
           </div>
+
+          {activeExam.id === 'exam-cell-bio-midterm' && (
+            <div className="no-print p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-start sm:items-center gap-2 min-w-0">
+                <HelpCircle className="w-4 h-4 shrink-0 text-amber-700 mt-0.5 sm:mt-0" />
+                <span>
+                  Viewing the read-only sample examination. Upload or select a source document in Step 1 to generate an editable examination.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 font-bold text-xs hover:bg-amber-100/70 cursor-pointer shrink-0 self-start sm:self-center"
+              >
+                Create New Exam
+              </button>
+            </div>
+          )}
+
+          {/* Export Error Banner */}
+          {exportError && !showExportModal && (
+            <div className="no-print p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span className="break-words">{exportError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExportError(null)}
+                className="p-1 text-rose-500 hover:text-rose-800 cursor-pointer shrink-0"
+                aria-label="Dismiss export error"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* AI-Resistant Notification Banners */}
           {aiResistantSuccessMessage && (
@@ -1591,18 +1730,7 @@ export function ExamWorkspace({
               onExport={(format, target, exportAll) => {
                 setExportTarget(target);
                 setExportScope(exportAll ? 'all' : 'current');
-                const currentGroupId = exportAll ? '' : activeExam.groups[activeGroupIndex]?.id || '';
-                let url = `/api/exams/${activeExam.id}/export/${format}?target=${target}&include_references=true`;
-                if (currentGroupId) {
-                  url += `&group_id=${currentGroupId}`;
-                }
-                const token = getAuthToken();
-                if (token) {
-                  url += `&token=${encodeURIComponent(token)}`;
-                } else {
-                  url += `&session_id=${encodeURIComponent(getGuestSessionId())}`;
-                }
-                window.location.href = url;
+                void downloadExamExport(format, target, exportAll ? 'all' : 'current', true);
               }}
             />
           ) : (
@@ -1764,7 +1892,7 @@ export function ExamWorkspace({
                                 setDeleteError(null);
                               }}
                               className="py-1.5 px-2.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[34px] whitespace-nowrap"
-                              title="Delete Question across all groups"
+                              title="Delete Question from this group"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                               <span className="hidden sm:inline">Delete Question</span>
@@ -1884,7 +2012,10 @@ export function ExamWorkspace({
                             step="0.5"
                             min="0.5"
                             value={editMarks}
-                            onChange={(e) => setEditMarks(parseFloat(e.target.value) || 1)}
+                            onChange={(e) => {
+                              const parsed = parseFloat(e.target.value);
+                              setEditMarks(isNaN(parsed) ? 0 : Math.max(0, parsed));
+                            }}
                             className="w-24 px-2.5 py-1 border border-stone-300 rounded-lg text-xs"
                           />
                         </div>
@@ -2278,29 +2409,41 @@ export function ExamWorkspace({
                   Include source evidence citations & page references in Answer Key
                 </label>
               </div>
+              {exportError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span className="break-words">{exportError}</span>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
               <button
-                onClick={() => setShowExportModal(false)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer text-center min-h-[42px] sm:min-h-[38px]"
+                onClick={() => {
+                  setShowExportModal(false);
+                  setExportError(null);
+                }}
+                disabled={Boolean(isExporting)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer text-center min-h-[42px] sm:min-h-[38px] disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleExport('docx')}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px]"
+                disabled={Boolean(isExporting)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px] disabled:opacity-50"
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Download DOCX (.docx)</span>
+                <span>{isExporting === 'docx' ? 'Exporting DOCX...' : 'Download DOCX (.docx)'}</span>
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px]"
+                disabled={Boolean(isExporting)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px] disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download PDF (.pdf)</span>
+                <span>{isExporting === 'pdf' ? 'Exporting PDF...' : 'Download PDF (.pdf)'}</span>
               </button>
             </div>
           </div>

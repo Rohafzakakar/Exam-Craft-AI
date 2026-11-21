@@ -171,9 +171,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
       <div
-        className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 my-auto max-h-[92vh]"
+        className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col md:grid md:grid-cols-12 my-auto max-h-[92vh] max-h-[92dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Column: Teacher Dashboard & Document Archive Explanation (Hidden on mobile below md) */}
@@ -240,38 +240,41 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
         </div>
 
         {/* Right Column: Sign In / Create Account Form */}
-        <div className="col-span-1 md:col-span-7 flex flex-col justify-between overflow-y-auto min-h-0">
+        <div className="flex-1 md:col-span-7 flex flex-col justify-between overflow-y-auto overscroll-contain min-w-0 min-h-0">
           {/* Modal Header */}
-          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-4 sm:p-6 relative shrink-0">
+          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-3.5 sm:p-6 relative shrink-0">
             <button
+              type="button"
               onClick={handleClose}
-              className="absolute top-4 sm:top-5 right-4 sm:right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 mb-2 pr-10">
-              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-lg shrink-0">
+            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 mb-1.5 sm:mb-2 pr-10 sm:pr-11 min-w-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-base sm:text-lg shrink-0">
                 E
               </div>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-bold">ExamCraft Educator Portal</h2>
-                <p className="text-xs text-pink-100 font-medium">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[15px] sm:text-lg font-bold leading-snug break-words">
+                  ExamCraft Educator Portal
+                </h2>
+                <p className="text-[11px] sm:text-xs text-pink-100 font-medium leading-snug mt-0.5 break-words">
                   Persistent examination storage & multi-group management
                 </p>
               </div>
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex bg-black/20 p-1 rounded-xl mt-4">
+            <div className="flex bg-black/20 p-1 rounded-xl mt-3 sm:mt-4 gap-1">
               <button
                 type="button"
                 onClick={() => handleTabSwitch('login')}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[38px] whitespace-nowrap ${
                   tab === 'login'
                     ? 'bg-white text-[#9D174D] shadow-xs'
-                    : 'text-white/80 hover:text-white'
+                    : 'text-white/85 hover:text-white'
                 }`}
               >
                 Sign In
@@ -279,10 +282,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
               <button
                 type="button"
                 onClick={() => handleTabSwitch('register')}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[38px] whitespace-nowrap ${
                   tab === 'register'
                     ? 'bg-white text-[#9D174D] shadow-xs'
-                    : 'text-white/80 hover:text-white'
+                    : 'text-white/85 hover:text-white'
                 }`}
               >
                 Create Account
@@ -291,18 +294,18 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
           </div>
 
           {/* Modal Body */}
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
-            <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 flex-1 flex flex-col justify-between min-w-0">
+            <div className="space-y-3.5 sm:space-y-4 min-w-0">
               {errorMsg && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 min-w-0">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-1 break-words">
                     <span>{errorMsg}</span>
                     {errorMsg.includes('already exists') && tab === 'register' && (
                       <button
                         type="button"
                         onClick={() => handleTabSwitch('login')}
-                        className="block font-bold text-[#9D174D] hover:underline cursor-pointer"
+                        className="block font-bold text-[#9D174D] hover:underline cursor-pointer text-left"
                       >
                         Click here to Sign In with this email &rarr;
                       </button>
@@ -312,72 +315,72 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
               )}
 
               {successMsg && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 min-w-0">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{successMsg}</span>
+                  <span className="min-w-0 break-words">{successMsg}</span>
                 </div>
               )}
 
               {tab === 'register' && (
                 <>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-stone-700 mb-1 leading-snug">
                       Full Name & Title
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                      <User className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         required
                         placeholder="Prof. Jane Harrison"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                        className="w-full min-w-0 pl-9 pr-3 py-2 text-sm sm:text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] min-h-[42px] sm:min-h-[38px]"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-stone-700 mb-1 leading-snug">
                       Academic Institution / Department
                     </label>
                     <div className="relative">
-                      <GraduationCap className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                      <GraduationCap className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         placeholder="Department of Biological Sciences"
                         value={institution}
                         onChange={(e) => setInstitution(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                        className="w-full min-w-0 pl-9 pr-3 py-2 text-sm sm:text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] min-h-[42px] sm:min-h-[38px]"
                       />
                     </div>
                   </div>
                 </>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+              <div className="min-w-0">
+                <label className="block text-xs font-bold text-stone-700 mb-1 leading-snug">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="email"
                     required
                     placeholder="instructor@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                    className="w-full min-w-0 pl-9 pr-3 py-2 text-sm sm:text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] min-h-[42px] sm:min-h-[38px]"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+              <div className="min-w-0">
+                <label className="block text-xs font-bold text-stone-700 mb-1 leading-snug">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="password"
                     required
@@ -385,11 +388,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
                     placeholder="At least 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D]"
+                    className="w-full min-w-0 pl-9 pr-3 py-2 text-sm sm:text-xs rounded-xl border border-stone-200 focus:outline-hidden focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] min-h-[42px] sm:min-h-[38px]"
                   />
                 </div>
                 {tab === 'login' && (
-                  <p className="text-[11px] text-stone-500 mt-1.5 leading-tight">
+                  <p className="text-[11px] text-stone-500 mt-1.5 leading-snug break-words">
                     Registered accounts preserve personal exam archives. <span className="text-stone-400">(Offline/local deployment: credential recovery via administrator)</span>
                   </p>
                 )}
@@ -397,47 +400,47 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
 
               {/* Explicit Consent Checkbox for Guest Data Migration */}
               {tab === 'register' && (
-                <div className="p-3.5 rounded-xl bg-pink-50/70 border border-pink-200/90 space-y-1.5">
-                  <label className="flex items-start gap-2.5 cursor-pointer">
+                <div className="p-3 sm:p-3.5 rounded-xl bg-pink-50/70 border border-pink-200/90 space-y-1.5 min-w-0">
+                  <label className="flex items-start gap-2.5 cursor-pointer min-w-0">
                     <input
                       type="checkbox"
                       checked={consentImportGuest}
                       onChange={(e) => setConsentImportGuest(e.target.checked)}
-                      className="mt-0.5 rounded text-[#9D174D] focus:ring-[#9D174D]"
+                      className="mt-0.5 w-4 h-4 shrink-0 rounded text-[#9D174D] focus:ring-[#9D174D]"
                     />
-                    <span className="text-xs font-bold text-stone-800 leading-tight">
+                    <span className="text-xs font-bold text-stone-800 leading-snug min-w-0 break-words">
                       Import my current guest examination & documents into my new account
                     </span>
                   </label>
-                  <p className="text-[11px] text-stone-500 pl-6 leading-relaxed">
+                  <p className="text-[11px] text-stone-500 pl-0 sm:pl-6 leading-relaxed break-words">
                     If checked, your active guest session exam and documents will be permanently assigned to your teacher account. If unchecked, your account will start fresh.
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="pt-4 space-y-3">
+            <div className="pt-3 sm:pt-4 space-y-3 shrink-0">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[44px]"
+                className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-sm sm:text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[44px]"
               >
                 {isLoading ? (
                   <span className="inline-block animate-spin mr-1">⏳</span>
                 ) : (
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 )}
                 <span>
                   {tab === 'login' ? 'Sign In to Account' : 'Create Teacher Account'}
                 </span>
               </button>
 
-              <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500">
+              <div className="pt-2 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-stone-500 text-center sm:text-left">
                 <span>Prefer testing without an account?</span>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="font-semibold text-[#9D174D] hover:underline cursor-pointer"
+                  className="font-semibold text-[#9D174D] hover:underline cursor-pointer py-1 px-2 min-h-[36px] inline-flex items-center"
                 >
                   Continue in Guest Mode
                 </button>

@@ -1346,6 +1346,27 @@ class ExamCraftDatabase {
     stmt.run(order, new Date().toISOString(), questionId);
   }
 
+  public reorderGroupQuestions(examId: string, groupId: string, questionIds: string[]): void {
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare(
+      'UPDATE exam_questions SET question_order = ?, updated_at = ? WHERE id = ? AND exam_id = ? AND group_id = ?'
+    );
+    this.db.exec('BEGIN IMMEDIATE;');
+    try {
+      questionIds.forEach((qId, idx) => {
+        stmt.run(idx + 1, now, qId, examId, groupId);
+      });
+      this.db.exec('COMMIT;');
+    } catch (err) {
+      try {
+        this.db.exec('ROLLBACK;');
+      } catch {
+        // ignore rollback error
+      }
+      throw err;
+    }
+  }
+
   // Explicit Guest Data Transfer with User Consent
   public transferGuestDataToUser(sessionId: string, userId: string): { transferredDocuments: number; transferredExams: number } {
     if (!sessionId || !userId || sessionId === 'default') {

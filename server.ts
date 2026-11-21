@@ -136,7 +136,7 @@ function sanitizeExportFilename(title: string, groupSuffix?: string | null, exte
   const clean = base
     .replace(/[^a-zA-Z0-9_\-\.]/g, '_')
     .replace(/_+/g, '_')
-    .replace(/^\.+|\.+$/g, '')
+    .replace(/^[_.\-]+|[_.\-]+$/g, '')
     .trim();
   const valid = clean.length > 0 ? clean : 'Examination_Paper';
   return `${valid.slice(0, 60)}.${extension.replace(/^\./, '')}`;
@@ -5500,12 +5500,17 @@ async function startServer() {
         if (!trimmedAns) {
           return res.status(422).json({ detail: 'Correct answer cannot be blank.' });
         }
-        if (targetQuestion.options && !targetQuestion.options.includes(trimmedAns)) {
-          return res.status(422).json({
-            detail: 'The correct answer must be one of the multiple-choice options.',
-          });
+        if (targetQuestion.options) {
+          const matchedOption = targetQuestion.options.find((opt) => opt.trim() === trimmedAns);
+          if (!matchedOption) {
+            return res.status(422).json({
+              detail: 'The correct answer must be one of the multiple-choice options.',
+            });
+          }
+          targetQuestion.correct_answer = matchedOption;
+        } else {
+          targetQuestion.correct_answer = trimmedAns;
         }
-        targetQuestion.correct_answer = trimmedAns;
       }
     } else {
       // Non-MCQ questions must not have options
@@ -5661,6 +5666,10 @@ async function startServer() {
       return res.status(400).json({ detail: 'question_ids must contain all question IDs in the group' });
     }
 
+    if (new Set(question_ids).size !== question_ids.length) {
+      return res.status(400).json({ detail: 'question_ids must not contain duplicate question IDs' });
+    }
+
     const currentIdSet = new Set(group.questions.map((q) => q.id));
     for (const qId of question_ids) {
       if (!currentIdSet.has(qId)) {
@@ -5668,12 +5677,13 @@ async function startServer() {
       }
     }
 
+    db.reorderGroupQuestions(exam.id, group.id, question_ids);
+
     const reordered: QuestionRecord[] = [];
     question_ids.forEach((qId, idx) => {
       const q = group.questions.find((item) => item.id === qId);
       if (q) {
         q.question_order = idx + 1;
-        db.updateQuestionOrder(q.id, idx + 1);
         reordered.push(q);
       }
     });
@@ -5857,32 +5867,51 @@ async function startServer() {
       }
     }
 
-    // Fallback search across all chunks if no candidate passed the primary loop
+    // Fallback search across cleaned document chunks while preserving cross-group uniqueness
     if (!synthesized) {
+      let identicalFallback: { q: any; fact: { chunk: DocumentChunkRecord; sentence: string; matchesInstruction: boolean } } | null = null;
       for (const chunk of doc.chunks) {
-        const sents = getSentences(chunk.content);
+        const { cleanedText, substantiveWordsCount } = cleanDocumentContentForRag(chunk.content);
+        if (substantiveWordsCount < 5) continue;
+        const sents = getSentences(cleanedText);
         for (const sent of sents) {
-          try {
-            const candidateQ = synthesizeQuestionFromFact(
-              doc,
-              chunk,
-              sent,
-              targetQ.question_type,
-              Boolean(exam.bloom_enabled),
-              targetQ.question_order,
-              variantSeed,
-              usedOptions
-            );
-            if (candidateQ && validateGroundedQuestion(candidateQ)) {
-              synthesized = candidateQ;
-              selectedFact = { chunk, sentence: sent, matchesInstruction: false };
-              break;
+          const norm = normalizeQuestionText(sent);
+          if (norm.length < 15 || usedSentences.has(norm)) continue;
+          for (let offset = 1; offset <= 3; offset++) {
+            try {
+              const candidateQ = synthesizeQuestionFromFact(
+                doc,
+                chunk,
+                sent,
+                targetQ.question_type,
+                Boolean(exam.bloom_enabled),
+                targetQ.question_order,
+                variantSeed + offset,
+                usedOptions
+              );
+              if (candidateQ && validateGroundedQuestion(candidateQ)) {
+                const isDupOther = allOtherExamQuestions.some((eq) => areQuestionsDuplicate(candidateQ, eq));
+                if (isDupOther) continue;
+                const isSameAsTarget = normalizeQuestionText(candidateQ.question_text) === normalizeQuestionText(targetQ.question_text);
+                if (!isSameAsTarget) {
+                  synthesized = candidateQ;
+                  selectedFact = { chunk, sentence: sent, matchesInstruction: false };
+                  break;
+                } else if (!identicalFallback) {
+                  identicalFallback = { q: candidateQ, fact: { chunk, sentence: sent, matchesInstruction: false } };
+                }
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
+          if (synthesized) break;
         }
         if (synthesized) break;
+      }
+      if (!synthesized && identicalFallback) {
+        synthesized = identicalFallback.q;
+        selectedFact = identicalFallback.fact;
       }
     }
 
@@ -6144,7 +6173,8 @@ async function startServer() {
       }
     }
 
-    const groupId = req.query.group_id as string | undefined;
+    const rawGroupId = typeof req.query.group_id === 'string' ? req.query.group_id.trim() : '';
+    const groupId = rawGroupId && !['undefined', 'null', 'all'].includes(rawGroupId.toLowerCase()) ? rawGroupId : undefined;
     let targetGroups = exam.groups;
 
     if (groupId) {
@@ -6749,7 +6779,8 @@ async function startServer() {
       }
     }
 
-    const groupId = req.query.group_id as string | undefined;
+    const rawGroupId = typeof req.query.group_id === 'string' ? req.query.group_id.trim() : '';
+    const groupId = rawGroupId && !['undefined', 'null', 'all'].includes(rawGroupId.toLowerCase()) ? rawGroupId : undefined;
     let targetGroups = exam.groups;
 
     if (groupId) {
@@ -7330,6 +7361,13 @@ async function startServer() {
     } catch (err: any) {
       return res.status(500).json({ detail: `Failed to export PDF: ${err.message}` });
     }
+  });
+
+  // JSON 404 Guard for unmatched API routes (prevents HTML 404 or SPA index.html responses on /api/*)
+  app.all('/api/*', (req: Request, res: Response) => {
+    return res.status(404).json({
+      detail: `API endpoint not found: ${req.method} ${req.path}`,
+    });
   });
 
   // Global Express Error Handler
