@@ -58,11 +58,11 @@ export function AcademicPaperPreview({
   return (
     <div className="space-y-6">
       {/* PREVIEW TOOLBAR (Hidden during print) */}
-      <div className="no-print bg-white p-3 sm:p-4 rounded-2xl border border-stone-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sticky top-14 sm:top-16 z-20">
-        <div className="flex items-center gap-2.5 sm:gap-3">
+      <div className="no-print bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200/90 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 lg:sticky lg:top-[72px] z-20">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <button
             onClick={onClose}
-            className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0"
+            className="px-3 py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0 min-h-[38px] sm:min-h-[36px]"
             title="Return to Editor"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -74,23 +74,23 @@ export function AcademicPaperPreview({
           <div className="min-w-0">
             <h3 className="text-xs sm:text-sm font-bold text-stone-900 flex items-center gap-1.5 sm:gap-2 truncate">
               <Eye className="w-4 h-4 text-[#9D174D] shrink-0" />
-              <span>Academic Sheet Preview</span>
+              <span className="truncate">Academic Sheet Preview</span>
             </h3>
-            <p className="text-[10px] sm:text-[11px] text-stone-500 truncate hidden sm:block">
+            <p className="text-[11px] text-stone-500 truncate hidden sm:block">
               Print preview of student papers & confidential answer keys
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center flex-wrap gap-2 justify-between md:justify-end">
+        <div className="flex items-center flex-wrap gap-2 justify-between lg:justify-end">
           {/* Target Mode Selector */}
-          <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl text-xs font-medium">
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/70 text-xs font-medium">
             <button
               onClick={() => setViewTarget('both')}
-              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap ${
                 viewTarget === 'both'
-                  ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                  ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
@@ -98,9 +98,9 @@ export function AcademicPaperPreview({
             </button>
             <button
               onClick={() => setViewTarget('exam')}
-              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap ${
                 viewTarget === 'exam'
-                  ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                  ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
@@ -108,9 +108,9 @@ export function AcademicPaperPreview({
             </button>
             <button
               onClick={() => setViewTarget('answer_key')}
-              className={`px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap ${
                 viewTarget === 'answer_key'
-                  ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                  ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
@@ -121,12 +121,12 @@ export function AcademicPaperPreview({
           <div className="h-5 w-px bg-stone-200 hidden sm:block" />
 
           {/* Scope Selector: Single Group vs All Groups */}
-          <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl text-xs font-medium">
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/70 text-xs font-medium">
             <button
               onClick={() => setScope('single')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
+              className={`px-2.5 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap ${
                 scope === 'single'
-                  ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                  ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
@@ -134,9 +134,9 @@ export function AcademicPaperPreview({
             </button>
             <button
               onClick={() => setScope('all')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs ${
+              className={`px-2.5 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap tabular-nums ${
                 scope === 'all'
-                  ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                  ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
@@ -147,28 +147,28 @@ export function AcademicPaperPreview({
           <div className="h-5 w-px bg-stone-200 hidden sm:block" />
 
           {/* Print & Export Buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
             <button
               type="button"
               data-testid="print-sheet-btn"
               onClick={handlePrint}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs min-h-[38px] sm:min-h-[36px]"
               title="Print Examination Sheets & Answer Keys"
               aria-label="Print Sheet"
             >
               <Printer className="w-3.5 h-3.5 text-stone-600" />
-              <span className="hidden sm:inline">Print</span>
+              <span>Print</span>
             </button>
             <button
               onClick={() => onExport('docx', viewTarget, scope === 'all')}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer shadow-xs min-h-[38px] sm:min-h-[36px]"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>DOCX</span>
             </button>
             <button
               onClick={() => onExport('pdf', viewTarget, scope === 'all')}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer shadow-xs min-h-[38px] sm:min-h-[36px]"
             >
               <Download className="w-3.5 h-3.5" />
               <span>PDF</span>
@@ -179,22 +179,26 @@ export function AcademicPaperPreview({
 
       {/* DYNAMIC GROUP TABS (Visible when scope is single, hidden in print) */}
       {scope === 'single' && (
-        <div className="no-print flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto">
+        <div className="no-print bg-stone-100/90 p-1.5 rounded-2xl border border-stone-200/80 flex flex-wrap items-center gap-1.5 max-w-full">
           {exam.groups.map((grp, idx) => {
             const isSelected = activeGroupIndex === idx;
             return (
               <button
                 key={grp.id}
                 onClick={() => onGroupSelect(idx)}
-                className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 whitespace-nowrap min-h-[38px] ${
                   isSelected
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    ? 'bg-[#9D174D] text-white shadow-xs'
+                    : 'bg-white/85 text-stone-700 hover:bg-white hover:text-stone-900 border border-stone-200/70'
                 }`}
               >
-                <Layers className="w-3 h-3 text-pink-400" />
+                <Layers className={`w-3 h-3 shrink-0 ${isSelected ? 'text-pink-200' : 'text-[#9D174D]'}`} />
                 <span>{grp.group_name}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-md tabular-nums leading-none font-semibold ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
+                  }`}
+                >
                   {grp.questions.length} Qs
                 </span>
               </button>
@@ -314,7 +318,7 @@ export function AcademicPaperPreview({
 
                           {/* Question Type Presentation */}
                           {qType === 'mcq' && q.options && (
-                            <div className="space-y-1.5 pl-6 pt-1 font-sans text-xs">
+                            <div className="space-y-1.5 ps-2 sm:ps-6 pt-1 font-sans text-xs">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {q.options.map((opt, oIdx) => {
                                   const lbl =
@@ -327,9 +331,9 @@ export function AcademicPaperPreview({
                                   return (
                                     <div
                                       key={oIdx}
-                                      className="flex items-center gap-2 p-1.5 rounded border border-stone-200/70 bg-stone-50/30"
+                                      className="flex items-start gap-2 p-2 rounded border border-stone-200/70 bg-stone-50/30"
                                     >
-                                      <span className="font-bold text-stone-700">
+                                      <span className="font-bold text-stone-700 shrink-0">
                                         ({lbl})
                                       </span>
                                       <span className="text-stone-800 break-words">{cleanOpt}</span>
@@ -344,7 +348,7 @@ export function AcademicPaperPreview({
                           )}
 
                           {qType === 'true_false' && (
-                            <div className="pl-6 pt-1 font-sans text-xs flex items-center gap-6">
+                            <div className="ps-2 sm:ps-6 pt-1 font-sans text-xs flex items-center gap-6">
                               <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 border border-stone-400 rounded-sm"></div>
                                 <span>True</span>
@@ -357,14 +361,14 @@ export function AcademicPaperPreview({
                           )}
 
                           {qType === 'fill_blank' && (
-                            <div className="pl-6 pt-2 font-sans text-xs">
+                            <div className="ps-2 sm:ps-6 pt-2 font-sans text-xs">
                               <span className="text-stone-500">Answer:</span>{' '}
                               <span className="border-b border-stone-400 inline-block w-full max-w-md"></span>
                             </div>
                           )}
 
                           {qType === 'short_answer' && (
-                            <div className="pl-6 pt-2 space-y-2">
+                            <div className="ps-2 sm:ps-6 pt-2 space-y-2">
                               <div className="border-b border-dashed border-stone-300 h-4 w-full"></div>
                               <div className="border-b border-dashed border-stone-300 h-4 w-full"></div>
                               <div className="border-b border-dashed border-stone-300 h-4 w-full"></div>
@@ -372,7 +376,7 @@ export function AcademicPaperPreview({
                           )}
 
                           {qType === 'essay' && (
-                            <div className="pl-6 pt-2 space-y-2">
+                            <div className="ps-2 sm:ps-6 pt-2 space-y-2">
                               {Array.from({ length: 6 }).map((_, lIdx) => (
                                 <div
                                   key={lIdx}

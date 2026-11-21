@@ -240,23 +240,23 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
         </div>
 
         {/* Right Column: Sign In / Create Account Form */}
-        <div className="col-span-1 md:col-span-7 flex flex-col justify-between overflow-y-auto">
+        <div className="col-span-1 md:col-span-7 flex flex-col justify-between overflow-y-auto min-h-0">
           {/* Modal Header */}
-          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-5 sm:p-6 relative">
+          <div className="bg-gradient-to-br from-[#9D174D] to-[#83133E] text-white p-4 sm:p-6 relative shrink-0">
             <button
               onClick={handleClose}
-              className="absolute top-4 sm:top-5 right-4 sm:right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="absolute top-4 sm:top-5 right-4 sm:right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-lg">
+            <div className="flex items-center gap-3 mb-2 pr-10">
+              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-lg shrink-0">
                 E
               </div>
-              <div>
-                <h2 className="text-lg font-bold">ExamCraft Educator Portal</h2>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold">ExamCraft Educator Portal</h2>
                 <p className="text-xs text-pink-100 font-medium">
                   Persistent examination storage & multi-group management
                 </p>
@@ -268,7 +268,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
               <button
                 type="button"
                 onClick={() => handleTabSwitch('login')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   tab === 'login'
                     ? 'bg-white text-[#9D174D] shadow-xs'
                     : 'text-white/80 hover:text-white'
@@ -279,7 +279,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
               <button
                 type="button"
                 onClick={() => handleTabSwitch('register')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   tab === 'register'
                     ? 'bg-white text-[#9D174D] shadow-xs'
                     : 'text-white/80 hover:text-white'
@@ -291,7 +291,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
           </div>
 
           {/* Modal Body */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
             <div className="space-y-4">
               {errorMsg && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
@@ -420,7 +420,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[44px]"
               >
                 {isLoading ? (
                   <span className="inline-block animate-spin mr-1">⏳</span>
@@ -432,7 +432,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialNotice }: AuthMod
                 </span>
               </button>
 
-              <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+              <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500">
                 <span>Prefer testing without an account?</span>
                 <button
                   type="button"

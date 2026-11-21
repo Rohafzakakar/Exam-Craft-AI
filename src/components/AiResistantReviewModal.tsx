@@ -51,23 +51,23 @@ export function AiResistantReviewModal({
     >
       <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden my-4 max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4.5 bg-gradient-to-r from-purple-900 via-pink-900 to-stone-900 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-purple-900 via-pink-900 to-stone-900 text-white flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
               <Sparkles className="w-5 h-5 text-pink-300" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-lg font-bold flex flex-wrap items-center gap-2">
                 <span>
                   {isRtl
                     ? 'بازبینی و ارتقای سوالات به سطح تحلیلی و مستند (مقاوم در برابر هوش مصنوعی)'
                     : 'Review & Upgrade: AI-Resistant Analytical Questions'}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/30 border border-pink-400/40 text-pink-100">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/30 border border-pink-400/40 text-pink-100 shrink-0">
                   {isRtl ? 'پیش‌نویس بازبینی' : 'Draft Preview'}
                 </span>
               </h2>
-              <p className="text-xs text-pink-100/80 mt-0.5">
+              <p className="text-xs text-pink-100/80 mt-0.5 leading-relaxed">
                 {isRtl
                   ? 'سوالات بر مبنای سطوح عالی بلوم (تحلیل، ارزیابی، استدلال علّی) و استناد مستقیم به متن بازآفرینی شده‌اند.'
                   : 'Re-engineered into higher-order analytical prompts requiring close reading and explicit source-evidence justification.'}
@@ -77,7 +77,7 @@ export function AiResistantReviewModal({
           <button
             onClick={onClose}
             disabled={isApplying}
-            className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -85,7 +85,7 @@ export function AiResistantReviewModal({
         </div>
 
         {/* Pedagogical Guidance Banner */}
-        <div className="px-6 py-3 bg-pink-50/70 border-b border-pink-100 flex items-start gap-3 text-xs text-[#83133E]">
+        <div className="px-4 sm:px-6 py-3 bg-pink-50/70 border-b border-pink-100 flex items-start gap-3 text-xs text-[#83133E]">
           <ShieldCheck className="w-4 h-4 shrink-0 text-[#9D174D] mt-0.5" />
           <div className="leading-relaxed">
             <span className="font-bold">
@@ -99,7 +99,7 @@ export function AiResistantReviewModal({
 
         {/* Group Selector Tabs */}
         {draftGroups.length > 1 && (
-          <div className="px-6 py-2.5 bg-stone-50 border-b border-stone-200 flex items-center gap-2 overflow-x-auto shrink-0">
+          <div className="px-4 sm:px-6 py-2.5 bg-stone-50 border-b border-stone-200 flex flex-wrap items-center gap-2 shrink-0">
             <span className="text-xs font-semibold text-stone-500 mr-1">
               {isRtl ? 'گروه‌ها:' : 'Variants:'}
             </span>
@@ -115,9 +115,9 @@ export function AiResistantReviewModal({
                       : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
                   }`}
                 >
-                  <Layers className="w-3 h-3 text-pink-300" />
+                  <Layers className="w-3 h-3 text-pink-300 shrink-0" />
                   <span>{group.group_name || `Group ${String.fromCharCode(65 + idx)}`}</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/10 tabular-nums leading-none">
                     {group.questions?.length || 0} Qs
                   </span>
                 </button>
@@ -127,14 +127,14 @@ export function AiResistantReviewModal({
         )}
 
         {/* Comparison Content List (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-stone-50/50">
-          <div className="text-xs text-stone-500 flex items-center justify-between pb-1">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-stone-50/50 min-h-0">
+          <div className="text-xs text-stone-500 flex flex-wrap items-center justify-between gap-2 pb-1">
             <span>
               {isRtl
                 ? `مشاهده سوالات پیشنهادی گروه: ${draftGroup?.group_name || 'Group A'}`
                 : `Comparing Current vs. Proposed AI-Resistant Questions (${draftGroup?.group_name || 'Group A'})`}
             </span>
-            <span className="font-semibold text-stone-700">
+            <span className="font-semibold text-stone-700 tabular-nums">
               {isRtl ? 'مجموع نمرات:' : 'Total Marks:'}{' '}
               {draftGroup?.questions?.reduce((sum: number, q: any) => sum + (q.marks || 0), 0) || 0} pts
             </span>

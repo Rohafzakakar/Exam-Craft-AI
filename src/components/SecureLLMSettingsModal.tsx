@@ -190,17 +190,17 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-100 text-[#9D174D] flex items-center justify-center shadow-xs">
+        <div className="px-4 sm:px-6 py-4 border-b border-stone-100 flex items-start sm:items-center justify-between gap-3 bg-stone-50/70 shrink-0">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-pink-100 text-[#9D174D] flex items-center justify-center shadow-xs shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2 flex-wrap">
-                Developer / Admin LLM Settings
+                <span>Developer / Admin LLM Settings</span>
                 <span className="text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-stone-200 text-stone-700">
                   Developer / Admin
                 </span>
@@ -212,7 +212,7 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer"
+            className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer shrink-0"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -220,7 +220,7 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
           {/* Provider & Model Metadata Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200/80 text-xs">
             <div className="flex items-center gap-2">
@@ -331,11 +331,11 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
             </div>
 
             {/* Form Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
               <button
                 type="submit"
                 disabled={isSaving || !apiKeyInput.trim() || apiKeyInput.trim().length < 10}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] disabled:bg-stone-300 text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] disabled:bg-stone-300 text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed min-h-[42px] sm:min-h-[38px]"
               >
                 {isSaving ? (
                   <>
@@ -355,7 +355,7 @@ export const SecureLLMSettingsModal: React.FC<SecureLLMSettingsModalProps> = ({
                   type="button"
                   onClick={handleClearKey}
                   disabled={isClearing}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium rounded-xl border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium rounded-xl border border-rose-200 transition-colors cursor-pointer disabled:opacity-50 min-h-[42px] sm:min-h-[38px]"
                   title="Evict key from server memory"
                 >
                   <Trash2 className="w-4 h-4" />

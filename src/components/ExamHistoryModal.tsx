@@ -109,9 +109,9 @@ export function ExamHistoryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="w-full max-w-3xl max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+        className="w-full max-w-3xl max-h-[88vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -123,7 +123,7 @@ export function ExamHistoryModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold">Examination History & Archive</h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white tabular-nums">
                   {exams.length} {exams.length === 1 ? 'Exam' : 'Exams'}
                 </span>
               </div>
@@ -133,13 +133,13 @@ export function ExamHistoryModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
             <button
               onClick={() => {
                 onCreateNewExam();
                 onClose();
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[#9D174D] hover:bg-pink-50 text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-white text-[#9D174D] hover:bg-pink-50 text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[38px] sm:min-h-[34px]"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Create New Exam</span>
@@ -147,7 +147,7 @@ export function ExamHistoryModal({
             <button
               onClick={onClose}
               aria-label="Close modal"
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -156,14 +156,14 @@ export function ExamHistoryModal({
 
         {/* Error notification */}
         {errorMsg && (
-          <div className="m-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
+          <div className="m-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
             <button
               onClick={() => setErrorMsg(null)}
-              className="text-rose-600 hover:text-rose-800 font-bold"
+              className="text-rose-600 hover:text-rose-800 font-bold shrink-0"
             >
               Dismiss
             </button>
@@ -171,7 +171,7 @@ export function ExamHistoryModal({
         )}
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 min-h-0">
           {!currentUser ? (
             <div className="text-center py-12 px-4 space-y-4 max-w-md mx-auto">
               <div className="w-14 h-14 rounded-3xl bg-pink-50 text-[#9D174D] flex items-center justify-center mx-auto">
@@ -240,24 +240,24 @@ export function ExamHistoryModal({
                         : 'bg-white hover:bg-stone-50/80 border-stone-200 hover:border-pink-300 shadow-2xs'
                     }`}
                   >
-                    <div className="space-y-1.5 flex-1">
+                    <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-stone-900 group-hover:text-[#9D174D] transition-colors">
+                        <span className="font-bold text-sm text-stone-900 group-hover:text-[#9D174D] transition-colors break-words">
                           {exam.title}
                         </span>
                         {isActive && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#9D174D] text-white">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#9D174D] text-white shrink-0">
                             Active in Workspace
                           </span>
                         )}
                         {exam.id === 'exam-cell-bio-midterm' && (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
                             Seed Template
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-stone-500 flex-wrap">
+                      <div className="flex items-center gap-x-2.5 gap-y-1 text-xs text-stone-500 flex-wrap tabular-nums">
                         <span className="font-medium text-stone-700">{exam.subject}</span>
                         <span>·</span>
                         <span className="flex items-center gap-1">
@@ -283,13 +283,13 @@ export function ExamHistoryModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto justify-start md:justify-end" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => {
                           onSelectExam(exam.id);
                           onClose();
                         }}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[34px] ${
                           isActive
                             ? 'bg-[#9D174D] text-white shadow-2xs'
                             : 'bg-stone-100 hover:bg-[#9D174D] text-stone-700 hover:text-white'
@@ -304,7 +304,7 @@ export function ExamHistoryModal({
                         onClick={(e) => handleExport(exam.id, 'docx', e)}
                         disabled={downloadingId === `${exam.id}-docx`}
                         title="Download Word (DOCX)"
-                        className="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-2 sm:py-1.5 text-xs font-semibold rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1 transition-colors cursor-pointer min-h-[38px] sm:min-h-[34px]"
                       >
                         <Download className="w-3.5 h-3.5 text-blue-600" />
                         <span>DOCX</span>
@@ -314,7 +314,7 @@ export function ExamHistoryModal({
                         onClick={(e) => handleExport(exam.id, 'pdf', e)}
                         disabled={downloadingId === `${exam.id}-pdf`}
                         title="Download PDF"
-                        className="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-2 sm:py-1.5 text-xs font-semibold rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1 transition-colors cursor-pointer min-h-[38px] sm:min-h-[34px]"
                       >
                         <Download className="w-3.5 h-3.5 text-rose-600" />
                         <span>PDF</span>
@@ -326,7 +326,7 @@ export function ExamHistoryModal({
                           <div className="flex items-center gap-1 animate-in fade-in">
                             <button
                               onClick={(e) => handleConfirmDelete(exam.id, e)}
-                              className="px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
                             >
                               Confirm
                             </button>
@@ -335,7 +335,7 @@ export function ExamHistoryModal({
                                 e.stopPropagation();
                                 setDeletingId(null);
                               }}
-                              className="px-2 py-1 text-[11px] font-medium rounded-lg bg-stone-200 text-stone-700 hover:bg-stone-300 cursor-pointer"
+                              className="px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-stone-200 text-stone-700 hover:bg-stone-300 cursor-pointer"
                             >
                               Cancel
                             </button>
@@ -347,7 +347,8 @@ export function ExamHistoryModal({
                               setDeletingId(exam.id);
                             }}
                             title="Delete Examination"
-                            className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            aria-label="Delete Examination"
+                            className="p-2 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer min-w-[38px] min-h-[38px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

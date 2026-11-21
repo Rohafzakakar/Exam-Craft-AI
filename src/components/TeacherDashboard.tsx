@@ -534,44 +534,41 @@ export function TeacherDashboard({
       )}
 
       {/* Teacher Profile & Welcome Hero */}
-      <div className="bg-white rounded-2xl border border-stone-200/80 p-6 md:p-8 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-pink-100/40 via-pink-50/20 to-transparent rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-6 md:p-8 shadow-xs relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-pink-100/40 via-pink-50/20 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#9D174D]" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#9D174D]">
-                {currentUser ? 'Educator Workspace' : 'Guest Educator Workspace'}
-              </span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 md:gap-6">
+          <div className="space-y-2 min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#9D174D]">
+              {currentUser ? 'Educator Workspace' : 'Guest Educator Workspace'}
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight break-words">
               {currentUser
                 ? `Welcome back, ${currentUser.full_name}`
                 : 'Welcome to ExamCraft AI'}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-stone-600 pt-1">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-stone-600 pt-1">
               {currentUser ? (
                 <>
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Building2 className="w-3.5 h-3.5 text-stone-400" />
-                    <span>{currentUser.institution || 'Institutional Affiliation Not Set'}</span>
+                  <div className="flex items-center gap-1.5 font-medium min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span className="truncate">{currentUser.institution || 'Institutional Affiliation Not Set'}</span>
                   </div>
-                  <span aria-hidden="true" className="text-stone-300">·</span>
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <User className="w-3.5 h-3.5 text-stone-400" />
-                    <span>{currentUser.email}</span>
+                  <span aria-hidden="true" className="text-stone-300 hidden sm:inline">·</span>
+                  <div className="flex items-center gap-1.5 font-medium min-w-0">
+                    <User className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span className="truncate">{currentUser.email}</span>
                   </div>
-                  <span aria-hidden="true" className="text-stone-300">·</span>
-                  <div className="flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    <Shield className="w-3 h-3" />
+                  <span aria-hidden="true" className="text-stone-300 hidden sm:inline">·</span>
+                  <div className="inline-flex items-center gap-1.5 font-semibold text-emerald-700">
+                    <Shield className="w-3.5 h-3.5 shrink-0" />
                     <span>Verified Teacher Account</span>
                   </div>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 font-medium">
                     Guest Mode Active
                   </span>
@@ -586,18 +583,19 @@ export function TeacherDashboard({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto">
             <button
               onClick={() => onCreateNewExam()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer min-h-[42px] sm:min-h-[38px]"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 shrink-0" />
               <span>Create New Examination</span>
             </button>
             <button
               onClick={fetchData}
               title="Refresh Data"
-              className="p-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-600 transition-colors cursor-pointer"
+              aria-label="Refresh Data"
+              className="p-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 transition-colors cursor-pointer min-w-[42px] min-h-[42px] sm:min-w-[38px] sm:min-h-[38px] flex items-center justify-center shrink-0"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -605,60 +603,61 @@ export function TeacherDashboard({
         </div>
       </div>
 
-      {/* Navigation Tabs (Zero-pill discipline, segmented control) */}
-      <div className="flex items-center gap-1 border-b border-stone-200/90 overflow-x-auto pb-px">
+      {/* Navigation Tabs (Zero-pill discipline, responsive wrapping segmented bar) */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 border-b border-stone-200/90 sm:overflow-x-auto pb-px">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
             activeTab === 'overview'
               ? 'border-[#9D174D] text-[#9D174D]'
               : 'border-transparent text-stone-600 hover:text-stone-900'
           }`}
         >
-          <LayoutDashboard className="w-4 h-4" />
+          <LayoutDashboard className="w-4 h-4 shrink-0" />
           <span>Overview</span>
         </button>
 
         <button
           onClick={() => setActiveTab('exams')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
             activeTab === 'exams'
               ? 'border-[#9D174D] text-[#9D174D]'
               : 'border-transparent text-stone-600 hover:text-stone-900'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 shrink-0" />
           <span>My Examinations</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 text-stone-700 font-semibold">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] leading-none bg-stone-100 text-stone-700 font-semibold tabular-nums">
             {exams.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('documents')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
             activeTab === 'documents'
               ? 'border-[#9D174D] text-[#9D174D]'
               : 'border-transparent text-stone-600 hover:text-stone-900'
           }`}
         >
-          <FileText className="w-4 h-4" />
+          <FileText className="w-4 h-4 shrink-0" />
           <span>Document Library</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 text-stone-700 font-semibold">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] leading-none bg-stone-100 text-stone-700 font-semibold tabular-nums">
             {documents.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('preferences')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
             activeTab === 'preferences'
               ? 'border-[#9D174D] text-[#9D174D]'
               : 'border-transparent text-stone-600 hover:text-stone-900'
           }`}
         >
-          <Building2 className="w-4 h-4" />
-          <span>Institution & Exam Preferences</span>
+          <Building2 className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Institution & Exam Preferences</span>
+          <span className="sm:hidden">Preferences</span>
         </button>
       </div>
 
@@ -691,44 +690,44 @@ export function TeacherDashboard({
         <div className="space-y-6">
           {/* Summary Metric Cards (Calculated directly from authorized data) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Saved Examinations</span>
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate">Saved Examinations</span>
+                <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#9D174D] flex items-center justify-center shrink-0">
                   <BookOpen className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight tabular-nums">
                 {stats.totalExams}
               </div>
-              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate tabular-nums">
                 {stats.totalExams === 1 ? '1 examination created' : `${stats.totalExams} examinations total`}
               </div>
             </div>
 
-            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Total Questions</span>
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate">Total Questions</span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                   <Award className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight tabular-nums">
                 {stats.totalQuestions}
               </div>
-              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
+              <div className="text-[10px] sm:text-[11px] text-stone-400 truncate tabular-nums">
                 Avg. {stats.avgQuestionsPerExam} questions/exam
               </div>
             </div>
 
-            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Exam Groups (A–J)</span>
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate">Exam Groups (A–J)</span>
+                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
                   <Layers className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight tabular-nums">
                 {stats.totalGroups}
               </div>
               <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
@@ -736,14 +735,14 @@ export function TeacherDashboard({
               </div>
             </div>
 
-            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate mr-1">Indexed Documents</span>
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] sm:text-xs font-medium text-stone-500 truncate">Indexed Documents</span>
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
                   <FileText className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight tabular-nums">
                 {stats.totalDocs}
               </div>
               <div className="text-[10px] sm:text-[11px] text-stone-400 truncate">
@@ -753,12 +752,12 @@ export function TeacherDashboard({
           </div>
 
           {/* Quick Actions Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
             <div
               onClick={() => onCreateNewExam()}
-              className="p-5 bg-gradient-to-br from-pink-50/60 to-white rounded-2xl border border-pink-200/80 hover:border-[#9D174D] transition-all cursor-pointer group shadow-2xs space-y-2"
+              className="p-4 sm:p-5 bg-gradient-to-br from-pink-50/70 to-white rounded-2xl border border-pink-200/80 hover:border-[#9D174D] transition-all cursor-pointer group shadow-2xs space-y-2"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#9D174D] text-white flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-[#9D174D] text-white flex items-center justify-center mb-1 transition-transform">
                 <Plus className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-bold text-stone-900 group-hover:text-[#9D174D] transition-colors">
@@ -771,9 +770,9 @@ export function TeacherDashboard({
 
             <div
               onClick={() => setActiveTab('documents')}
-              className="p-5 bg-white rounded-2xl border border-stone-200/80 hover:border-stone-400 transition-all cursor-pointer group shadow-2xs space-y-2"
+              className="p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/90 hover:border-stone-400 transition-all cursor-pointer group shadow-2xs space-y-2"
             >
-              <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center mb-1 transition-transform">
                 <Upload className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-bold text-stone-900 group-hover:text-[#9D174D] transition-colors">
@@ -786,9 +785,9 @@ export function TeacherDashboard({
 
             <div
               onClick={() => setActiveTab('preferences')}
-              className="p-5 bg-white rounded-2xl border border-stone-200/80 hover:border-stone-400 transition-all cursor-pointer group shadow-2xs space-y-2"
+              className="p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/90 hover:border-stone-400 transition-all cursor-pointer group shadow-2xs space-y-2"
             >
-              <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center mb-1 transition-transform">
                 <Building2 className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-bold text-stone-900 group-hover:text-[#9D174D] transition-colors">
@@ -801,28 +800,28 @@ export function TeacherDashboard({
           </div>
 
           {/* Recent Examinations Section */}
-          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h3 className="text-sm font-bold text-stone-900">Recent Examinations</h3>
                 <p className="text-xs text-stone-500">Your most recently created exam papers</p>
               </div>
               <button
                 onClick={() => setActiveTab('exams')}
-                className="text-xs font-bold text-[#9D174D] hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-[#9D174D] hover:underline flex items-center gap-1 cursor-pointer shrink-0 py-1.5 px-2 rounded-lg hover:bg-pink-50/70"
               >
-                <span>View All ({exams.length})</span>
+                <span className="tabular-nums">View All ({exams.length})</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {exams.length === 0 ? (
-              <div className="p-8 text-center rounded-xl bg-stone-50 border border-dashed border-stone-200 space-y-3">
+              <div className="p-6 sm:p-8 text-center rounded-xl bg-stone-50 border border-dashed border-stone-200 space-y-3">
                 <BookOpen className="w-8 h-8 text-stone-400 mx-auto" />
                 <p className="text-xs text-stone-500 font-medium">No saved examinations found yet.</p>
                 <button
                   onClick={() => onCreateNewExam()}
-                  className="px-3.5 py-1.5 bg-[#9D174D] text-white text-xs font-bold rounded-xl hover:bg-[#83133E] transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#9D174D] text-white text-xs font-bold rounded-xl hover:bg-[#83133E] transition-all cursor-pointer"
                 >
                   Create Your First Examination
                 </button>
@@ -833,21 +832,21 @@ export function TeacherDashboard({
                   <div
                     key={exam.id}
                     onClick={() => onSelectExam(exam.id)}
-                    className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-stone-50/60 -mx-2 px-2 rounded-xl transition-colors cursor-pointer group"
+                    className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-stone-50/70 -mx-2 px-2 rounded-xl transition-colors cursor-pointer group"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-stone-900 group-hover:text-[#9D174D] transition-colors">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-[#9D174D] transition-colors break-words">
                           {exam.title}
                         </span>
                         {exam.id === 'exam-cell-bio-midterm' && (
-                          <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.2 rounded border border-amber-200 font-medium">
+                          <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-medium shrink-0">
                             Tutorial Demo
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-stone-500">
-                        <span>{exam.subject}</span>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-stone-500 tabular-nums">
+                        <span className="truncate max-w-[200px] sm:max-w-none">{exam.subject}</span>
                         <span aria-hidden="true">·</span>
                         <span>{exam.questions_count || 0} questions</span>
                         <span aria-hidden="true">·</span>
@@ -857,22 +856,22 @@ export function TeacherDashboard({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <div className="flex items-center gap-2 self-stretch sm:self-center justify-end shrink-0">
                       <button
                         onClick={(e) => handleExport(exam.id, 'docx', e)}
                         title="Download Word Document"
-                        className="px-2 py-1 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold flex items-center gap-1 cursor-pointer min-h-[34px]"
                       >
-                        <FileText className="w-3 h-3 text-blue-600" />
-                        <span className="hidden md:inline">Word</span>
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Word</span>
                       </button>
                       <button
                         onClick={(e) => handleExport(exam.id, 'pdf', e)}
                         title="Download PDF Document"
-                        className="px-2 py-1 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold flex items-center gap-1 cursor-pointer min-h-[34px]"
                       >
-                        <Download className="w-3 h-3 text-rose-600" />
-                        <span className="hidden md:inline">PDF</span>
+                        <Download className="w-3.5 h-3.5 text-rose-600" />
+                        <span>PDF</span>
                       </button>
                       <span className="text-xs font-bold text-[#9D174D] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 ml-1">
                         Open <ChevronRight className="w-3.5 h-3.5" />
@@ -890,86 +889,89 @@ export function TeacherDashboard({
       {!loading && !errorMsg && activeTab === 'exams' && (
         <div className="space-y-4">
           {/* Filter, Search & Sort Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-2xs space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-stone-200/90 shadow-2xs space-y-3">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
               {/* Search input */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={examSearch}
                   onChange={(e) => setExamSearch(e.target.value)}
                   placeholder="Search examinations by title, subject, or institution..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                  className="w-full pl-9 pr-8 py-2.5 sm:py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px]"
                 />
                 {examSearch && (
                   <button
                     onClick={() => setExamSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                    aria-label="Clear search"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Group Filter */}
-              <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl shrink-0">
-                <button
-                  onClick={() => setExamGroupFilter('all')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    examGroupFilter === 'all'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  All Groups
-                </button>
-                <button
-                  onClick={() => setExamGroupFilter('single')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    examGroupFilter === 'single'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  1 Group
-                </button>
-                <button
-                  onClick={() => setExamGroupFilter('multi')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    examGroupFilter === 'multi'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  2–10 Groups
-                </button>
-              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+                {/* Group Filter */}
+                <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl shrink-0">
+                  <button
+                    onClick={() => setExamGroupFilter('all')}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[36px] sm:min-h-[32px] whitespace-nowrap ${
+                      examGroupFilter === 'all'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    All Groups
+                  </button>
+                  <button
+                    onClick={() => setExamGroupFilter('single')}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[36px] sm:min-h-[32px] whitespace-nowrap ${
+                      examGroupFilter === 'single'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    1 Group
+                  </button>
+                  <button
+                    onClick={() => setExamGroupFilter('multi')}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-[36px] sm:min-h-[32px] whitespace-nowrap ${
+                      examGroupFilter === 'multi'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    2–10 Groups
+                  </button>
+                </div>
 
-              {/* Sort Selector */}
-              <div className="flex items-center gap-1.5 shrink-0 text-xs">
-                <ArrowUpDown className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                <select
-                  value={examSort}
-                  onChange={(e) => setExamSort(e.target.value as any)}
-                  className="bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 cursor-pointer"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="questions">Most Questions</option>
-                  <option value="marks">Highest Marks</option>
-                  <option value="title">Alphabetical (A–Z)</option>
-                </select>
+                {/* Sort Selector */}
+                <div className="flex items-center gap-1.5 shrink-0 text-xs">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  <select
+                    value={examSort}
+                    onChange={(e) => setExamSort(e.target.value as any)}
+                    className="w-full sm:w-auto bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 cursor-pointer min-h-[40px]"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="questions">Most Questions</option>
+                    <option value="marks">Highest Marks</option>
+                    <option value="title">Alphabetical (A–Z)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             {/* Language orientation filter */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100 gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-stone-500 pt-2.5 border-t border-stone-100 gap-2">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-medium text-stone-500">Language:</span>
                 <button
                   onClick={() => setExamLangFilter('all')}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer ${
                     examLangFilter === 'all' ? 'bg-[#9D174D] text-white' : 'hover:bg-stone-100 text-stone-600'
                   }`}
                 >
@@ -977,7 +979,7 @@ export function TeacherDashboard({
                 </button>
                 <button
                   onClick={() => setExamLangFilter('rtl')}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer ${
                     examLangFilter === 'rtl' ? 'bg-[#9D174D] text-white' : 'hover:bg-stone-100 text-stone-600'
                   }`}
                 >
@@ -985,7 +987,7 @@ export function TeacherDashboard({
                 </button>
                 <button
                   onClick={() => setExamLangFilter('ltr')}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer ${
                     examLangFilter === 'ltr' ? 'bg-[#9D174D] text-white' : 'hover:bg-stone-100 text-stone-600'
                   }`}
                 >
@@ -993,13 +995,13 @@ export function TeacherDashboard({
                 </button>
               </div>
 
-              <span className="text-[11px] text-stone-400">Showing {filteredExams.length} of {exams.length} examinations</span>
+              <span className="text-[11px] text-stone-400 tabular-nums">Showing {filteredExams.length} of {exams.length} examinations</span>
             </div>
           </div>
 
           {/* Examinations List */}
           {filteredExams.length === 0 ? (
-            <div className="bg-white p-12 text-center rounded-2xl border border-stone-200/80 space-y-3">
+            <div className="bg-white p-8 sm:p-12 text-center rounded-2xl border border-stone-200/90 space-y-3">
               <BookOpen className="w-10 h-10 text-stone-300 mx-auto" />
               <h4 className="text-sm font-bold text-stone-800">No Examinations Found</h4>
               <p className="text-xs text-stone-500 max-w-sm mx-auto">
@@ -1009,7 +1011,7 @@ export function TeacherDashboard({
               </p>
               <button
                 onClick={() => onCreateNewExam()}
-                className="px-4 py-2 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Create New Examination
               </button>
@@ -1023,14 +1025,14 @@ export function TeacherDashboard({
                 return (
                   <div
                     key={exam.id}
-                    className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs hover:border-[#9D174D]/60 transition-all flex flex-col justify-between gap-4"
+                    className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 shadow-2xs hover:border-[#9D174D]/60 transition-all flex flex-col justify-between gap-4 min-w-0"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1">
+                        <div className="space-y-1 flex-1 min-w-0">
                           <h4
                             dir={isRtl ? 'rtl' : 'ltr'}
-                            className="text-sm font-bold text-stone-900 line-clamp-2 leading-tight"
+                            className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug"
                           >
                             {exam.title}
                           </h4>
@@ -1054,7 +1056,7 @@ export function TeacherDashboard({
                       </div>
 
                       {/* Metadata Chips / Unboxed details */}
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-stone-500 pt-1">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-stone-500 pt-1 tabular-nums">
                         <span className="font-semibold text-stone-700">{exam.questions_count || 0} Questions</span>
                         <span aria-hidden="true">·</span>
                         <span>{exam.groups_count || 1} Groups ({exam.groups_count && exam.groups_count > 1 ? `A–${String.fromCharCode(65 + exam.groups_count - 1)}` : 'A'})</span>
@@ -1072,27 +1074,29 @@ export function TeacherDashboard({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-stone-100">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-100">
                       <button
                         onClick={() => onSelectExam(exam.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs min-h-[38px] sm:min-h-[34px]"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                         <span>Open in Workspace</span>
                       </button>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={(e) => handleExport(exam.id, 'docx', e)}
                           title="Export Word (DOCX)"
-                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
+                          aria-label="Export Word (DOCX)"
+                          className="p-2 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer min-w-[38px] min-h-[38px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center"
                         >
                           <FileText className="w-3.5 h-3.5 text-blue-600" />
                         </button>
                         <button
                           onClick={(e) => handleExport(exam.id, 'pdf', e)}
                           title="Export PDF"
-                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
+                          aria-label="Export PDF"
+                          className="p-2 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer min-w-[38px] min-h-[38px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center"
                         >
                           <Download className="w-3.5 h-3.5 text-rose-600" />
                         </button>
@@ -1101,7 +1105,8 @@ export function TeacherDashboard({
                           <button
                             onClick={() => setDeletingExamId(exam.id)}
                             title="Delete Examination"
-                            className="p-1.5 rounded-lg border border-stone-200 hover:bg-rose-50 hover:border-rose-200 text-stone-400 hover:text-rose-600 cursor-pointer transition-colors"
+                            aria-label="Delete Examination"
+                            className="p-2 rounded-lg border border-stone-200 hover:bg-rose-50 hover:border-rose-200 text-stone-400 hover:text-rose-600 cursor-pointer transition-colors min-w-[38px] min-h-[38px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1118,13 +1123,13 @@ export function TeacherDashboard({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleDeleteExam(exam.id)}
-                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer"
                           >
                             Yes, Delete
                           </button>
                           <button
                             onClick={() => setDeletingExamId(null)}
-                            className="px-2.5 py-1 bg-white border border-stone-200 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-50 cursor-pointer"
+                            className="px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-50 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -1143,7 +1148,7 @@ export function TeacherDashboard({
       {!loading && !errorMsg && activeTab === 'documents' && (
         <div className="space-y-4">
           {/* Document Upload & Search Bar */}
-          <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-2xs space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-stone-900">Curriculum Source Documents</h3>
@@ -1153,8 +1158,8 @@ export function TeacherDashboard({
               </div>
 
               {/* Upload Button */}
-              <div className="shrink-0">
-                <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer">
+              <div className="shrink-0 w-full md:w-auto">
+                <label className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer min-h-[42px] md:min-h-[38px]">
                   <Upload className={`w-4 h-4 ${isUploadingDoc ? 'animate-bounce' : ''}`} />
                   <span>{isUploadingDoc ? 'Indexing Document...' : 'Upload Textbook (PDF / DOCX)'}</span>
                   <input
@@ -1190,14 +1195,14 @@ export function TeacherDashboard({
                 value={docSearch}
                 onChange={(e) => setDocSearch(e.target.value)}
                 placeholder="Search documents by filename..."
-                className="w-full pl-9 pr-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                className="w-full pl-9 pr-3 py-2.5 sm:py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px]"
               />
             </div>
           </div>
 
           {/* Document Cards */}
           {filteredDocs.length === 0 ? (
-            <div className="bg-white p-12 text-center rounded-2xl border border-stone-200/80 space-y-3">
+            <div className="bg-white p-8 sm:p-12 text-center rounded-2xl border border-stone-200/90 space-y-3">
               <FileText className="w-10 h-10 text-stone-300 mx-auto" />
               <h4 className="text-sm font-bold text-stone-800">No Documents Found</h4>
               <p className="text-xs text-stone-500 max-w-sm mx-auto">
@@ -1213,15 +1218,15 @@ export function TeacherDashboard({
                 return (
                   <div
                     key={doc.id}
-                    className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs hover:border-stone-400 transition-all flex flex-col justify-between gap-4"
+                    className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 shadow-2xs hover:border-stone-400 transition-all flex flex-col justify-between gap-4 min-w-0"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <h4 className="text-sm font-bold text-stone-900 break-all leading-tight">
+                        <div className="space-y-0.5 flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-stone-900 break-words leading-snug">
                             {doc.filename}
                           </h4>
-                          <div className="text-[11px] text-stone-400">
+                          <div className="text-[11px] text-stone-400 tabular-nums">
                             Indexed: {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Active'}
                           </div>
                         </div>
@@ -1238,7 +1243,7 @@ export function TeacherDashboard({
                       </div>
 
                       {/* Metadata properties */}
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-stone-500 pt-1">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-stone-500 pt-1 tabular-nums">
                         <span className="font-semibold text-stone-700">{doc.total_pages || 1} Pages</span>
                         <span aria-hidden="true">·</span>
                         <span>{doc.chunks_count || 0} Chunks</span>
@@ -1251,20 +1256,20 @@ export function TeacherDashboard({
 
                     {/* Action buttons */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-100">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <div className="flex flex-wrap items-center gap-2 flex-1">
                         <button
                           onClick={() => onCreateNewExam(doc.id)}
-                          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs min-h-[38px] sm:min-h-[34px]"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3.5 h-3.5 shrink-0" />
                           <span>Generate Questions</span>
                         </button>
 
                         <button
                           onClick={() => handleInspectDocChunks(doc)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer min-h-[38px] sm:min-h-[34px]"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5 shrink-0" />
                           <span>Inspect Chunks</span>
                         </button>
                       </div>
@@ -1273,7 +1278,8 @@ export function TeacherDashboard({
                         <button
                           onClick={() => setDeletingDocId(doc.id)}
                           title="Delete Document"
-                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-rose-50 hover:border-rose-200 text-stone-400 hover:text-rose-600 cursor-pointer transition-colors"
+                          aria-label="Delete Document"
+                          className="p-2 rounded-lg border border-stone-200 hover:bg-rose-50 hover:border-rose-200 text-stone-400 hover:text-rose-600 cursor-pointer transition-colors min-w-[38px] min-h-[38px] sm:min-w-[34px] sm:min-h-[34px] flex items-center justify-center shrink-0"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1289,13 +1295,13 @@ export function TeacherDashboard({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleDeleteDoc(doc.id)}
-                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer"
                           >
                             Yes, Delete
                           </button>
                           <button
                             onClick={() => setDeletingDocId(null)}
-                            className="px-2.5 py-1 bg-white border border-stone-200 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-50 cursor-pointer"
+                            className="px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-50 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -1310,26 +1316,27 @@ export function TeacherDashboard({
 
           {/* Chunk Inspection Drawer / Modal */}
           {selectedDocForChunks && (
-            <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-stone-200 flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-bold text-stone-900 truncate max-w-md">
+            <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-stone-200 flex items-center justify-between gap-3 shrink-0">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-stone-900 truncate">
                       Chunks: {selectedDocForChunks.filename}
                     </h3>
-                    <p className="text-[11px] text-stone-500">
+                    <p className="text-[11px] text-stone-500 tabular-nums">
                       {selectedDocForChunks.chunks_count} sections indexed from document
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedDocForChunks(null)}
-                    className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+                    aria-label="Close chunks modal"
+                    className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer shrink-0"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="p-4 overflow-y-auto space-y-3 flex-1">
+                <div className="p-4 overflow-y-auto space-y-3 flex-1 min-h-0">
                   {loadingChunks ? (
                     <div className="p-8 text-center text-stone-500 text-xs">Loading document sections...</div>
                   ) : docChunks.length === 0 ? (
@@ -1340,7 +1347,7 @@ export function TeacherDashboard({
                         key={chunk.id || idx}
                         className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 space-y-1.5 text-xs"
                       >
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-stone-600 tabular-nums">
                           <span>Page {chunk.page_number} {chunk.chapter ? `· ${chunk.chapter}` : ''}</span>
                           <span className="font-mono text-stone-400">~{chunk.token_count || 0} tokens</span>
                         </div>
@@ -1355,10 +1362,10 @@ export function TeacherDashboard({
                   )}
                 </div>
 
-                <div className="p-3 border-t border-stone-200 bg-stone-50/50 flex justify-end">
+                <div className="p-3 border-t border-stone-200 bg-stone-50/50 flex justify-end shrink-0">
                   <button
                     onClick={() => setSelectedDocForChunks(null)}
-                    className="px-4 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl cursor-pointer"
                   >
                     Close
                   </button>
@@ -1371,10 +1378,10 @@ export function TeacherDashboard({
 
       {/* TAB 4: INSTITUTION & EXAM PREFERENCES */}
       {!loading && !errorMsg && activeTab === 'preferences' && (
-        <div className="max-w-2xl bg-white rounded-2xl border border-stone-200/80 p-6 shadow-2xs space-y-6">
+        <div className="max-w-2xl bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-6 md:p-8 shadow-2xs space-y-6">
           <div>
             <h3 className="text-base font-bold text-stone-900">Institution & Exam Preferences</h3>
-            <p className="text-xs text-stone-500 leading-relaxed">
+            <p className="text-xs text-stone-500 leading-relaxed mt-1">
               Configure your institutional affiliation, department name, and default examination parameters. These details appear automatically on generated examination papers.
             </p>
           </div>
@@ -1398,43 +1405,43 @@ export function TeacherDashboard({
 
           <form onSubmit={handleSavePreferences} className="space-y-4">
             {/* Teacher Details */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-1">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#9D174D]">
                 Teacher Profile
               </h4>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-stone-700">Full Name</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-700 block">Full Name</label>
                 <input
                   type="text"
                   value={prefFullName}
                   onChange={(e) => setPrefFullName(e.target.value)}
                   placeholder="e.g. Dr. Ahmad Rahimi"
-                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                  className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px]"
                   required
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-stone-700">University / Institution</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-700 block">University / Institution</label>
                 <input
                   type="text"
                   value={prefInstitution}
                   onChange={(e) => setPrefInstitution(e.target.value)}
                   placeholder="e.g. Herat University (پوهنتون هرات)"
-                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                  className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px]"
                   required
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-stone-700">Faculty / Department</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-700 block">Faculty / Department</label>
                 <input
                   type="text"
                   value={prefFaculty}
                   onChange={(e) => setPrefFaculty(e.target.value)}
                   placeholder="e.g. Faculty of Science, Department of Biology"
-                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                  className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px]"
                 />
               </div>
             </div>
@@ -1446,24 +1453,24 @@ export function TeacherDashboard({
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-stone-700">Default Duration (Minutes)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 block">Default Duration (Minutes)</label>
                   <input
                     type="number"
                     min={15}
                     max={240}
                     value={prefDuration}
                     onChange={(e) => setPrefDuration(parseInt(e.target.value, 10) || 60)}
-                    className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D]"
+                    className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] min-h-[40px] tabular-nums"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-stone-700">Default Group Count (1–10)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 block">Default Group Count (1–10)</label>
                   <select
                     value={prefGroupsCount}
                     onChange={(e) => setPrefGroupsCount(parseInt(e.target.value, 10) || 3)}
-                    className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] cursor-pointer"
+                    className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9D174D]/20 focus:border-[#9D174D] cursor-pointer min-h-[40px] bg-white"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <option key={num} value={num}>
@@ -1474,15 +1481,15 @@ export function TeacherDashboard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-start gap-2.5 pt-2">
                 <input
                   type="checkbox"
                   id="prefBloom"
                   checked={prefBloom}
                   onChange={(e) => setPrefBloom(e.target.checked)}
-                  className="rounded border-stone-300 text-[#9D174D] focus:ring-[#9D174D] cursor-pointer"
+                  className="mt-0.5 rounded border-stone-300 text-[#9D174D] focus:ring-[#9D174D] cursor-pointer w-4 h-4"
                 />
-                <label htmlFor="prefBloom" className="text-xs text-stone-700 cursor-pointer">
+                <label htmlFor="prefBloom" className="text-xs text-stone-700 cursor-pointer leading-relaxed">
                   Enforce Bloom's Revised Taxonomy cognitive level balancing by default
                 </label>
               </div>
@@ -1492,9 +1499,9 @@ export function TeacherDashboard({
               <button
                 type="submit"
                 disabled={prefSaving}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50 min-h-[44px] sm:min-h-[40px]"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-4 h-4 shrink-0" />
                 <span>{prefSaving ? 'Saving Changes...' : 'Save Preferences'}</span>
               </button>
             </div>

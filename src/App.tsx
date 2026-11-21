@@ -194,126 +194,128 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAF9F6] via-pink-50/20 to-stone-50/90 text-[#1F1924] flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAF9F6] via-pink-50/25 to-stone-50/90 text-[#1F1924] flex flex-col">
       {/* Top Navigation Bar */}
-      <header className="no-print border-b border-pink-100/80 bg-white/85 backdrop-blur-md sticky top-0 z-30 px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-1.5 sm:gap-2.5 max-w-full overflow-hidden shadow-2xs">
-        {/* Left Branding */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#9D174D] text-white flex items-center justify-center font-black text-sm sm:text-base shadow-sm shrink-0">
-            E
-          </div>
-          <div>
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="font-bold text-sm sm:text-base lg:text-lg tracking-tight text-[#9D174D] whitespace-nowrap">
-                ExamCraft<span className="hidden xs:inline"> AI</span>
-              </span>
+      <header className="no-print border-b border-stone-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-30 shadow-2xs">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+          {/* Left Branding */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-[#9D174D] text-white flex items-center justify-center font-black text-xs sm:text-base shadow-xs shrink-0">
+              E
             </div>
-            <p className="hidden 2xl:block text-[11px] text-stone-500 font-medium">
-              Source-Grounded Examination Platform for Educators
-            </p>
-          </div>
-        </div>
-
-        {/* View Switcher Controls (Teacher Dashboard is exclusively for authenticated educators) */}
-        {currentUser ? (
-          <div className="flex items-center gap-0.5 p-0.5 bg-stone-100/90 rounded-xl border border-stone-200/60 shrink-0">
-            <button
-              onClick={() => setMainView('dashboard')}
-              className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                mainView === 'dashboard'
-                  ? 'bg-white text-[#9D174D] shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Teacher Dashboard</span>
-              <span className="hidden sm:inline lg:hidden">Dashboard</span>
-              <span className="sm:hidden">Dash</span>
-            </button>
-            <button
-              onClick={() => setMainView('workspace')}
-              className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                mainView === 'workspace'
-                  ? 'bg-white text-[#9D174D] shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Exam Workspace</span>
-              <span className="hidden sm:inline lg:hidden">Workspace</span>
-              <span className="sm:hidden">Work</span>
-            </button>
-          </div>
-        ) : (
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-stone-100/90 text-stone-700 text-xs font-bold border border-stone-200/60 shadow-2xs shrink-0">
-            <Layers className="w-3.5 h-3.5 text-[#9D174D]" />
-            <span className="hidden md:inline">Exam Workspace</span>
-            <span className="md:hidden">Workspace</span>
-          </div>
-        )}
-
-        {/* Header Actions */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Exam History Button (Exclusively for Authenticated Teachers) */}
-          {currentUser && (
-            <button
-              onClick={() => setIsHistoryModalOpen(true)}
-              className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-xl border border-pink-200 bg-pink-50/80 hover:bg-pink-100 text-[#9D174D] text-xs font-bold transition-all shadow-2xs cursor-pointer shrink-0"
-              title="Examination History"
-              aria-label="Exam History"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Exam History</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#9D174D] text-white font-bold">
-                {savedExams.length}
-              </span>
-            </button>
-          )}
-
-          {/* Teacher Auth / Guest Status Indicator */}
-          {currentUser ? (
-            <div className="flex items-center gap-1 sm:gap-1.5 pl-1 sm:pl-2 border-l border-stone-200 shrink-0">
-              <div className="flex items-center gap-1.5 px-1 sm:px-2 py-1 rounded-xl bg-stone-100 border border-stone-200/80 text-stone-800 text-xs font-semibold shrink-0">
-                <div className="w-5 h-5 rounded-full bg-[#9D174D] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                  {currentUser.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left hidden 2xl:block">
-                  <div className="leading-tight font-bold truncate max-w-[100px]">{currentUser.full_name}</div>
-                  <div className="text-[10px] text-stone-500 font-normal truncate max-w-[100px]">
-                    {currentUser.institution || 'Teacher'}
-                  </div>
-                </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="font-bold text-xs sm:text-base lg:text-lg tracking-tight text-[#9D174D] whitespace-nowrap">
+                  ExamCraft<span className="hidden sm:inline"> AI</span>
+                </span>
               </div>
+              <p className="hidden xl:block text-[11px] text-stone-500 font-medium leading-tight">
+                Source-Grounded Examination Platform
+              </p>
+            </div>
+          </div>
+
+          {/* View Switcher Controls (Teacher Dashboard is exclusively for authenticated educators) */}
+          {currentUser ? (
+            <div className="flex items-center gap-0.5 sm:gap-1 p-0.5 sm:p-1 bg-stone-100/90 rounded-xl border border-stone-200/80 shrink-0">
               <button
-                onClick={handleLogout}
-                title="Log Out"
-                className="p-1 sm:p-1.5 rounded-xl border border-stone-200 hover:bg-rose-50 text-stone-500 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
-                aria-label="Log Out"
+                onClick={() => setMainView('dashboard')}
+                className={`inline-flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap min-h-[34px] ${
+                  mainView === 'dashboard'
+                    ? 'bg-white text-[#9D174D] shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
               >
-                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <LayoutDashboard className="w-3.5 h-3.5 hidden sm:inline shrink-0" />
+                <span className="hidden md:inline">Teacher Dashboard</span>
+                <span className="md:hidden">Dashboard</span>
+              </button>
+              <button
+                onClick={() => setMainView('workspace')}
+                className={`inline-flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap min-h-[34px] ${
+                  mainView === 'workspace'
+                    ? 'bg-white text-[#9D174D] shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 hidden sm:inline shrink-0" />
+                <span className="hidden md:inline">Exam Workspace</span>
+                <span className="md:hidden">Workspace</span>
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1 sm:gap-1.5 pl-1 sm:pl-2 border-l border-stone-200 shrink-0">
-              <div className="px-2 py-0.5 rounded-xl bg-stone-100 text-stone-600 text-xs font-medium hidden xl:flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                <span>Guest Mode</span>
-              </div>
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sign In / Register</span>
-                <span className="sm:hidden">Sign In</span>
-              </button>
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100/90 text-stone-700 text-xs font-bold border border-stone-200/70 shadow-2xs shrink-0">
+              <Layers className="w-3.5 h-3.5 text-[#9D174D]" />
+              <span>Exam Workspace</span>
             </div>
           )}
+
+          {/* Header Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Exam History Button (Exclusively for Authenticated Teachers) */}
+          {currentUser && (
+              <button
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl border border-pink-200 bg-pink-50/80 hover:bg-pink-100 text-[#9D174D] text-xs font-bold transition-all shadow-2xs cursor-pointer shrink-0 min-h-[36px]"
+                title="Examination History"
+                aria-label="Exam History"
+              >
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden lg:inline">Exam History</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] leading-none bg-[#9D174D] text-white font-bold tabular-nums">
+                  {savedExams.length}
+                </span>
+              </button>
+            )}
+
+            {/* Teacher Auth / Guest Status Indicator */}
+            {currentUser ? (
+              <div className="flex items-center gap-1 sm:gap-1.5 pl-1.5 sm:pl-2 border-l border-stone-200 shrink-0">
+                <div
+                  className="flex items-center gap-2 sm:px-2.5 sm:py-1 rounded-xl sm:bg-stone-100/90 sm:border sm:border-stone-200/80 text-stone-800 text-xs font-semibold shrink-0 sm:min-h-[36px]"
+                  title={`${currentUser.full_name}${currentUser.institution ? ` · ${currentUser.institution}` : ''}`}
+                >
+                  <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-[#9D174D] text-white flex items-center justify-center font-bold text-[11px] shrink-0">
+                    {currentUser.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left hidden xl:block">
+                    <div className="leading-tight font-bold truncate max-w-[120px]">{currentUser.full_name}</div>
+                    <div className="text-[10px] text-stone-500 font-normal truncate max-w-[120px]">
+                      {currentUser.institution || 'Teacher'}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  title="Log Out"
+                  className="p-1.5 sm:p-2 rounded-xl border border-stone-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-stone-500 hover:text-rose-600 transition-colors cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  aria-label="Log Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-stone-200 shrink-0">
+                <div className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-600 text-xs font-medium hidden lg:flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                  <span>Guest Mode</span>
+                </div>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0 min-h-[36px]"
+                >
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Sign In / Register</span>
+                  <span className="sm:hidden">Sign In</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto p-3.5 sm:p-6 md:p-8 flex-1 w-full space-y-6 sm:space-y-8">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8 flex-1 w-full space-y-6 sm:space-y-8 min-w-0">
         {mainView === 'dashboard' && currentUser ? (
           <TeacherDashboard
             currentUser={currentUser}
@@ -331,7 +333,7 @@ export default function App() {
             }}
           />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* Active Educator Examination Workspace */}
             <ExamWorkspace
               isLlmConfigured={isLlmConfigured}
@@ -347,13 +349,13 @@ export default function App() {
       </main>
 
       {/* Clean Academic Footer with Developer/Admin Settings Area */}
-      <footer className="no-print border-t border-[#F3E8EC] bg-white/80 py-3.5 px-4 md:px-6 mt-auto">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-stone-500">
+      <footer className="no-print border-t border-stone-200/80 bg-white/90 py-3.5 px-3 sm:px-6 lg:px-8 mt-auto">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs sm:text-[11px] text-stone-500 text-center sm:text-left">
           <span>ExamCraft AI · Academic Examination Generation Platform</span>
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-stone-500 hover:text-[#9D174D] hover:bg-pink-50/70 transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-stone-500 hover:text-[#9D174D] hover:bg-pink-50/70 transition-colors cursor-pointer min-h-[36px] sm:min-h-0"
             title="Developer / Admin AI Provider Settings"
           >
             <Settings className="w-3.5 h-3.5" />

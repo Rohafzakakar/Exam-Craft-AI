@@ -1,12 +1,26 @@
 @import "tailwindcss";
 
 @layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
-  
+
   [dir="rtl"] {
     font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid rgba(157, 23, 77, 0.45);
+    outline-offset: 2px;
   }
 }
 

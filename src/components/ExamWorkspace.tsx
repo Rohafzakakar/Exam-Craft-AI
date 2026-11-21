@@ -899,84 +899,115 @@ export function ExamWorkspace({
 
   return (
     <div className="space-y-6">
-      {/* Workflow Navigation Pills */}
-      <div className="no-print flex items-center justify-between border-b border-stone-200/80 pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-2 overflow-x-auto">
+      {/* Workflow Navigation Rail */}
+      <div className="no-print bg-white/95 p-1.5 sm:p-2 rounded-2xl border border-stone-200/85 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {onBackToDashboard && (
-            <button
-              onClick={onBackToDashboard}
-              className="mr-1 px-3 py-2 rounded-xl text-xs font-bold text-[#9D174D] bg-pink-50 hover:bg-pink-100 border border-pink-200 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-              title="Return to Teacher Dashboard"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-            </button>
+            <>
+              <button
+                onClick={onBackToDashboard}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-[#9D174D] bg-pink-50/90 hover:bg-pink-100 border border-pink-200/80 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 min-h-[40px] sm:min-h-[38px]"
+                title="Return to Teacher Dashboard"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+                <span>Dashboard</span>
+              </button>
+              <div className="h-5 w-px bg-stone-200 hidden sm:block shrink-0" />
+            </>
           )}
-        <button
-          onClick={() => setStep(1)}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            step === 1
-              ? 'bg-[#9D174D] text-white shadow-xs'
-              : 'bg-stone-100 text-stone-600 hover:bg-stone-200/80'
-          }`}
-        >
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
-            1
-          </span>
-          Upload & Select Document
-        </button>
 
-        <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
+          <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0">
+            <button
+              onClick={() => setStep(1)}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center sm:justify-start gap-2 transition-all cursor-pointer min-h-[40px] sm:min-h-[38px] whitespace-nowrap ${
+                step === 1
+                  ? 'bg-[#9D174D] text-white shadow-xs'
+                  : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/70'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 tabular-nums ${
+                  step === 1
+                    ? 'bg-white/20 text-white'
+                    : 'bg-white text-stone-600 border border-stone-200'
+                }`}
+              >
+                1
+              </span>
+              <span className="hidden md:inline">Upload & Select Document</span>
+              <span className="md:hidden">Document</span>
+            </button>
 
-        <button
-          onClick={() => setStep(2)}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            step === 2
-              ? 'bg-[#9D174D] text-white shadow-xs'
-              : 'bg-stone-100 text-stone-600 hover:bg-stone-200/80'
-          }`}
-        >
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
-            2
-          </span>
-          Exam Configuration
-        </button>
+            <ArrowRight className="w-3.5 h-3.5 text-stone-300 hidden md:block shrink-0" />
 
-        <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
+            <button
+              onClick={() => setStep(2)}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center sm:justify-start gap-2 transition-all cursor-pointer min-h-[40px] sm:min-h-[38px] whitespace-nowrap ${
+                step === 2
+                  ? 'bg-[#9D174D] text-white shadow-xs'
+                  : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/70'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 tabular-nums ${
+                  step === 2
+                    ? 'bg-white/20 text-white'
+                    : 'bg-white text-stone-600 border border-stone-200'
+                }`}
+              >
+                2
+              </span>
+              <span className="hidden md:inline">Exam Configuration</span>
+              <span className="md:hidden">Configure</span>
+            </button>
 
-        <button
-          onClick={() => activeExam && setStep(3)}
-          disabled={!activeExam}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            step === 3
-              ? 'bg-[#9D174D] text-white shadow-xs'
-              : activeExam
-              ? 'bg-stone-100 text-stone-600 hover:bg-stone-200/80'
-              : 'bg-stone-50 text-stone-300 cursor-not-allowed'
-          }`}
-        >
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
-            3
-          </span>
-          Review Groups & Answer Keys
-        </button>
+            <ArrowRight className="w-3.5 h-3.5 text-stone-300 hidden md:block shrink-0" />
+
+            <button
+              onClick={() => activeExam && setStep(3)}
+              disabled={!activeExam}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center sm:justify-start gap-2 transition-all min-h-[40px] sm:min-h-[38px] whitespace-nowrap ${
+                step === 3
+                  ? 'bg-[#9D174D] text-white shadow-xs cursor-pointer'
+                  : activeExam
+                  ? 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/70 cursor-pointer'
+                  : 'bg-stone-50/60 text-stone-300 border border-stone-100 cursor-not-allowed'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 tabular-nums ${
+                  step === 3
+                    ? 'bg-white/20 text-white'
+                    : activeExam
+                    ? 'bg-white text-stone-600 border border-stone-200'
+                    : 'bg-stone-100 text-stone-300'
+                }`}
+              >
+                3
+              </span>
+              <span className="hidden md:inline">Review Groups & Answer Keys</span>
+              <span className="md:hidden">Review</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* STEP 1: Upload & Select Document */}
       {step === 1 && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-stone-200/80 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <Upload className="w-4 h-4 text-[#9D174D]" />
-              Upload Educational Reference Document (PDF or DOCX)
-            </h3>
-            <p className="text-xs text-stone-500">
-              ExamCraft AI strictly derives all examination questions directly from your uploaded
-              curriculum or syllabus materials.
-            </p>
+          <div className="bg-white p-5 sm:p-7 rounded-2xl border border-stone-200/90 shadow-xs space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-stone-900 tracking-tight flex items-center gap-2">
+                <Upload className="w-4 h-4 text-[#9D174D] shrink-0" />
+                <span>Upload Educational Reference Document (PDF or DOCX)</span>
+              </h3>
+              <p className="text-xs text-stone-500 leading-relaxed">
+                ExamCraft AI strictly derives all examination questions directly from your uploaded
+                curriculum or syllabus materials.
+              </p>
+            </div>
 
-            <div className="border-2 border-dashed border-stone-200 hover:border-[#9D174D]/50 rounded-2xl p-8 text-center transition-all bg-stone-50/50 hover:bg-pink-50/20">
+            <div className="border-2 border-dashed border-stone-200 hover:border-[#9D174D]/50 rounded-2xl p-6 sm:p-10 text-center transition-all bg-stone-50/50 hover:bg-pink-50/20">
               <input
                 type="file"
                 id="doc-upload-input"
@@ -987,15 +1018,15 @@ export function ExamWorkspace({
               />
               <label
                 htmlFor="doc-upload-input"
-                className="cursor-pointer flex flex-col items-center justify-center gap-2"
+                className="cursor-pointer flex flex-col items-center justify-center gap-2.5"
               >
-                <div className="w-12 h-12 rounded-2xl bg-pink-50 text-[#9D174D] flex items-center justify-center mb-1">
-                  <Upload className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 text-[#9D174D] flex items-center justify-center mb-0.5">
+                  <Upload className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-semibold text-stone-800">
+                <span className="text-xs sm:text-sm font-bold text-stone-800">
                   {isUploading ? 'Parsing & Indexing Document...' : 'Click to Upload PDF or DOCX'}
                 </span>
-                <span className="text-[11px] text-stone-400">
+                <span className="text-[11px] text-stone-500">
                   Supports English, Dari, Pashto, Arabic, and multilingual materials
                 </span>
               </label>
@@ -1011,11 +1042,13 @@ export function ExamWorkspace({
 
           {/* List of Loaded Documents */}
           {documents.length > 0 && (
-            <div className="bg-white p-6 rounded-2xl border border-stone-200/80 shadow-xs space-y-4">
-              <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                Available Source Documents ({documents.length})
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-white p-5 sm:p-7 rounded-2xl border border-stone-200/90 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider tabular-nums">
+                  Available Source Documents ({documents.length})
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {documents.map((doc) => {
                   const isSelected = selectedDoc?.id === doc.id;
                   return (
@@ -1035,32 +1068,34 @@ export function ExamWorkspace({
                           setSubject('General Educational Subject');
                         }
                       }}
-                      className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-4 rounded-xl border text-left cursor-pointer transition-all min-w-0 ${
                         isSelected
-                          ? 'border-[#9D174D] bg-pink-50/40 ring-1 ring-[#9D174D]'
-                          : 'border-stone-200 hover:border-stone-300 bg-white'
+                          ? 'border-[#9D174D] bg-pink-50/35 ring-2 ring-[#9D174D]/15'
+                          : 'border-stone-200 hover:border-stone-300 bg-white hover:bg-stone-50/40'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <FileText
-                            className={`w-4 h-4 ${isSelected ? 'text-[#9D174D]' : 'text-stone-400'}`}
+                            className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#9D174D]' : 'text-stone-400'}`}
                           />
-                          <span className="text-xs font-bold text-stone-900 truncate max-w-[220px]">
+                          <span className="text-xs sm:text-sm font-bold text-stone-900 truncate">
                             {doc.filename}
                           </span>
                         </div>
                         {isSelected && (
-                          <span className="px-2 py-0.5 rounded-full bg-[#9D174D] text-white text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-[#9D174D] text-white text-[10px] font-bold shrink-0">
                             Selected
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-3 text-[11px] text-stone-500">
-                        <span>Pages: {doc.total_pages}</span>
-                        <span>Chunks: {doc.chunks_count}</span>
-                        <span className="flex items-center gap-1 font-mono uppercase text-[10px] bg-stone-100 px-1.5 py-0.5 rounded">
-                          <Globe className="w-2.5 h-2.5" />
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2.5 text-[11px] text-stone-500 tabular-nums">
+                        <span>{doc.total_pages} Pages</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{doc.chunks_count} Chunks</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="inline-flex items-center gap-1 font-mono uppercase text-[10px] text-stone-600">
+                          <Globe className="w-3 h-3 text-stone-400" />
                           {doc.detected_language}
                           {doc.is_rtl ? ' (RTL)' : ''}
                         </span>
@@ -1074,7 +1109,7 @@ export function ExamWorkspace({
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => setStep(2)}
-                    className="px-5 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs cursor-pointer"
+                    className="w-full sm:w-auto px-5 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px] sm:min-h-[40px]"
                   >
                     <span>Proceed to Exam Configuration</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1088,47 +1123,47 @@ export function ExamWorkspace({
 
       {/* STEP 2: Configure & Generate */}
       {step === 2 && (
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-stone-200/80 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-4">
-            <div>
-              <h3 className="text-base font-bold text-stone-900">
+        <div className="bg-white p-5 sm:p-7 md:p-8 rounded-2xl border border-stone-200/90 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-stone-100 pb-4">
+            <div className="min-w-0 space-y-0.5">
+              <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
                 Examination Specification & Psychometrics
               </h3>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-500 truncate">
                 Derived exclusively from: <span className="font-semibold text-stone-800">{selectedDoc?.filename}</span>
               </p>
             </div>
             {selectedDoc?.is_rtl && (
-              <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold inline-flex items-center gap-1 self-start sm:self-center shrink-0">
                 <Globe className="w-3 h-3" /> Right-to-Left (RTL) Active
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            <div className="lg:col-span-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Exam Title</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">Exam Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Subject</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">Subject</label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
                   Institution / School / University <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <input
@@ -1136,12 +1171,12 @@ export function ExamWorkspace({
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="e.g. Kabul University or High School Name"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
                   Faculty / Department <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <input
@@ -1149,12 +1184,12 @@ export function ExamWorkspace({
                   value={faculty}
                   onChange={(e) => setFaculty(e.target.value)}
                   placeholder="e.g. Faculty of Law or Department of Computer Science"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
                   Source Page Range
                 </label>
                 <input
@@ -1162,16 +1197,16 @@ export function ExamWorkspace({
                   value={selectedPages}
                   onChange={(e) => setSelectedPages(e.target.value)}
                   placeholder="e.g. all or 1,2"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                  className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px]"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[11px] text-stone-400 mt-1 block">
                   Leave 'all' to use all pages, or specify comma-separated page numbers.
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
                     Duration (Minutes)
                   </label>
                   <input
@@ -1180,18 +1215,18 @@ export function ExamWorkspace({
                     max="300"
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(Math.max(10, Math.min(300, parseInt(e.target.value, 10) || 60)))}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none"
+                    className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[40px] tabular-nums"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
                     Difficulty Profile
                   </label>
                   <select
                     value={difficultyProfile}
                     onChange={(e) => setDifficultyProfile(e.target.value as 'balanced' | 'easy' | 'challenging')}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 sm:py-2 border border-stone-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none cursor-pointer min-h-[40px]"
                   >
                     <option value="balanced">Balanced (40% Easy / 40% Med / 20% Hard)</option>
                     <option value="easy">Foundational (70% Easy / 25% Med / 5% Hard)</option>
@@ -1201,19 +1236,19 @@ export function ExamWorkspace({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="lg:col-span-6 space-y-5">
               {/* Dynamic Groups (1-10 Groups) */}
-              <div className="p-4 bg-pink-50/50 rounded-xl border border-pink-100 space-y-2">
-                <div className="flex items-center justify-between">
+              <div className="p-4 sm:p-5 bg-pink-50/45 rounded-xl border border-pink-200/70 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-xs font-bold text-[#9D174D] flex items-center gap-1.5">
-                    <Shuffle className="w-3.5 h-3.5" />
-                    Anti-Cheating Examination Groups (1–10)
+                    <Shuffle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Anti-Cheating Examination Groups (1–10)</span>
                   </label>
-                  <span className="text-xs font-bold text-[#9D174D] bg-pink-100 px-2.5 py-0.5 rounded-full font-mono">
+                  <span className="text-xs font-bold text-[#9D174D] bg-white border border-pink-200 px-2.5 py-0.5 rounded-lg font-mono tabular-nums">
                     {getGroupLabelText(groupsCount)}
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-600">
+                <p className="text-[11px] text-stone-600 leading-relaxed">
                   Generates distinct, source-grounded parallel exam variants ({getGroupLabelText(groupsCount)}) from
                   unique curriculum evidence across the document, ensuring genuine anti-cheating separation while
                   maintaining consistent question types, difficulty, and grading rubrics.
@@ -1233,10 +1268,10 @@ export function ExamWorkspace({
                     max="10"
                     value={groupsCount}
                     onChange={(e) => setGroupsCount(Math.min(10, Math.max(1, parseInt(e.target.value, 10) || 1)))}
-                    className="w-14 px-2 py-1 text-center text-xs font-bold border border-pink-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#9D174D]"
+                    className="w-14 px-2 py-1.5 text-center text-xs font-bold border border-pink-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#9D174D] tabular-nums min-h-[38px]"
                   />
                 </div>
-                <div className="flex justify-between text-[10px] font-mono text-stone-500">
+                <div className="flex justify-between text-[10px] font-mono text-stone-500 tabular-nums">
                   <span>1 (A)</span>
                   <span>3 (A–C)</span>
                   <span>6 (A–F)</span>
@@ -1245,91 +1280,91 @@ export function ExamWorkspace({
               </div>
 
               {/* Exact Question Quotas per Group */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-stone-700">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-stone-800">
                     Exact Question Quotas (Per Group)
                   </label>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${totalQuestions > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg tabular-nums ${totalQuestions > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                     Total: {totalQuestions} {totalQuestions === 1 ? 'Question' : 'Questions'}
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-500">
                   Select and enter exact quantities for each question type you need. Set unneeded types to 0.
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
-                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
-                    <span className="text-[11px] font-semibold text-stone-700 block">MCQ (4 Options)</span>
-                    <span className="text-[9px] text-stone-400 block mb-1.5">2 marks each</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 space-y-1">
+                    <span className="text-[11px] font-semibold text-stone-800 block">MCQ (4 Options)</span>
+                    <span className="text-[10px] text-stone-400 block">2 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={mcqCount}
                       onChange={(e) => setMcqCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[44px] tabular-nums"
                     />
                   </div>
-                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
-                    <span className="text-[11px] font-semibold text-stone-700 block">True / False</span>
-                    <span className="text-[9px] text-stone-400 block mb-1.5">1 mark each</span>
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 space-y-1">
+                    <span className="text-[11px] font-semibold text-stone-800 block">True / False</span>
+                    <span className="text-[10px] text-stone-400 block">1 mark each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={tfCount}
                       onChange={(e) => setTfCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[44px] tabular-nums"
                     />
                   </div>
-                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
-                    <span className="text-[11px] font-semibold text-stone-700 block">Fill in the Blank</span>
-                    <span className="text-[9px] text-stone-400 block mb-1.5">2 marks each</span>
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 space-y-1">
+                    <span className="text-[11px] font-semibold text-stone-800 block">Fill in the Blank</span>
+                    <span className="text-[10px] text-stone-400 block">2 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       value={fillBlankCount}
                       onChange={(e) => setFillBlankCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[44px] tabular-nums"
                     />
                   </div>
-                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50">
-                    <span className="text-[11px] font-semibold text-stone-700 block">Short Answer</span>
-                    <span className="text-[9px] text-stone-400 block mb-1.5">3 marks each</span>
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 space-y-1">
+                    <span className="text-[11px] font-semibold text-stone-800 block">Short Answer</span>
+                    <span className="text-[10px] text-stone-400 block">3 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="50"
                       value={shortCount}
                       onChange={(e) => setShortCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[44px] tabular-nums"
                     />
                   </div>
-                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 col-span-2 sm:col-span-1">
-                    <span className="text-[11px] font-semibold text-stone-700 block">Essay / Long Answer</span>
-                    <span className="text-[9px] text-stone-400 block mb-1.5">5 marks each</span>
+                  <div className="p-3 border border-stone-200 rounded-xl text-center bg-stone-50/50 space-y-1 col-span-2 sm:col-span-1">
+                    <span className="text-[11px] font-semibold text-stone-800 block">Essay / Long Answer</span>
+                    <span className="text-[10px] text-stone-400 block">5 marks each</span>
                     <input
                       type="number"
                       min="0"
                       max="30"
                       value={essayCount}
                       onChange={(e) => setEssayCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/30 focus:border-[#9D174D] outline-none min-h-[40px]"
+                      className="w-full text-center text-sm font-bold border border-stone-300 rounded-lg py-1.5 px-1 bg-white focus:ring-2 focus:ring-[#9D174D]/25 focus:border-[#9D174D] outline-none min-h-[44px] tabular-nums"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-start gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="bloom-cb"
                   checked={bloomEnabled}
                   onChange={(e) => setBloomEnabled(e.target.checked)}
-                  className="rounded text-[#9D174D] focus:ring-[#9D174D]"
+                  className="mt-0.5 rounded text-[#9D174D] focus:ring-[#9D174D] w-4 h-4 cursor-pointer"
                 />
-                <label htmlFor="bloom-cb" className="text-xs text-stone-700 font-medium">
+                <label htmlFor="bloom-cb" className="text-xs text-stone-700 font-medium cursor-pointer leading-relaxed">
                   Enforce Bloom's Cognitive Taxonomy (Remember, Understand, Apply, Analyze)
                 </label>
               </div>
@@ -1347,7 +1382,7 @@ export function ExamWorkspace({
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="px-4 py-2.5 border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer text-center"
+              className="px-4 py-2.5 border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer text-center min-h-[44px] sm:min-h-[40px]"
             >
               Back to Documents
             </button>
@@ -1356,13 +1391,13 @@ export function ExamWorkspace({
               type="button"
               onClick={handleGenerateExam}
               disabled={isGenerating}
-              className={`px-6 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs min-h-[44px] sm:min-h-[40px] ${
                 isGenerating
                   ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                  : 'bg-[#9D174D] hover:bg-[#83133E] text-white'
+                  : 'bg-[#9D174D] hover:bg-[#83133E] text-white cursor-pointer'
               }`}
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 shrink-0" />
               <span>
                 {isGenerating ? 'Generating Questions...' : 'Generate Questions'}
               </span>
@@ -1374,111 +1409,160 @@ export function ExamWorkspace({
       {/* STEP 3: Review Groups & Answer Keys */}
       {step === 3 && activeExam && (
         <div className="space-y-6">
-          {/* Exam Header Summary */}
-          <div className={`bg-white p-6 rounded-2xl border border-stone-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${workspaceView === 'preview' ? 'no-print' : ''}`}>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-stone-900">{activeExam.title}</h3>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-pink-50 text-[#9D174D] font-bold border border-pink-200">
-                  {activeExam.groups_count} Groups Generated
-                </span>
-                {activeExam.is_rtl && (
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                    RTL Script
+          {/* Exam Summary Card: Sectioned Academic Header, Metadata & Dedicated Toolbar */}
+          <div className={`bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden ${workspaceView === 'preview' ? 'no-print' : ''}`}>
+            {/* a. Header & b. Metadata */}
+            <div className="p-5 sm:p-6 md:p-7 space-y-3.5">
+              {/* a. Header: Full-width Exam Title + Clearly Separated Status Badge */}
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-6">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-stone-950 tracking-tight leading-snug break-words min-w-0 flex-1">
+                  {activeExam.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 shrink-0 sm:pt-0.5">
+                  <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg bg-pink-50/90 text-[#9D174D] font-bold border border-pink-200/80 tabular-nums whitespace-nowrap">
+                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {activeExam.groups_count} {activeExam.groups_count === 1 ? 'Group' : 'Groups'} Generated
+                    </span>
                   </span>
-                )}
+                  {activeExam.is_rtl && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                      <Globe className="w-3.5 h-3.5 shrink-0" />
+                      <span>RTL Script</span>
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-stone-500 mt-1">
-                Subject: <span className="font-semibold text-stone-700">{activeExam.subject}</span>
+
+              {/* b. Metadata: Compact, readable information */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-600 tabular-nums">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-stone-400">Subject:</span>
+                  <strong className="font-semibold text-stone-800">{activeExam.subject}</strong>
+                </span>
                 {activeExam.institution && (
-                  <span> | Institution: <span className="font-semibold text-stone-700">{activeExam.institution}</span></span>
+                  <>
+                    <span aria-hidden="true" className="text-stone-300">·</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-stone-400">Institution:</span>
+                      <strong className="font-semibold text-stone-800">{activeExam.institution}</strong>
+                    </span>
+                  </>
                 )}
                 {activeExam.faculty && (
-                  <span> | Faculty/Dept: <span className="font-semibold text-stone-700">{activeExam.faculty}</span></span>
+                  <>
+                    <span aria-hidden="true" className="text-stone-300">·</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-stone-400">Faculty / Dept:</span>
+                      <strong className="font-semibold text-stone-800">{activeExam.faculty}</strong>
+                    </span>
+                  </>
                 )}
-                {' | Total Questions: '}{activeExam.questions_count} | All Questions Source-Grounded
-              </p>
+                <span aria-hidden="true" className="text-stone-300">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-stone-400">Total Questions:</span>
+                  <strong className="font-semibold text-stone-800">{activeExam.questions_count}</strong>
+                </span>
+                {activeExam.duration_minutes > 0 && (
+                  <>
+                    <span aria-hidden="true" className="text-stone-300">·</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-stone-400">Duration:</span>
+                      <strong className="font-semibold text-stone-800">{activeExam.duration_minutes} Mins</strong>
+                    </span>
+                  </>
+                )}
+                <span aria-hidden="true" className="text-stone-300">·</span>
+                <span className="inline-flex items-center gap-1.5 text-emerald-700 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>All Questions Source-Grounded</span>
+                </span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setWorkspaceView(workspaceView === 'editor' ? 'preview' : 'editor')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs ${
-                  workspaceView === 'preview'
-                    ? 'bg-[#9D174D] text-white'
-                    : 'bg-pink-50 text-[#9D174D] border border-pink-200 hover:bg-pink-100'
-                }`}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview & Print'}</span>
-                <span className="sm:hidden">{workspaceView === 'preview' ? 'Editor' : 'Preview'}</span>
-              </button>
-
-              {workspaceView === 'editor' && (
-                <>
-                  <button
-                    onClick={() => setViewMode('questions')}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                      viewMode === 'questions'
-                        ? 'bg-[#9D174D] text-white shadow-xs'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Questions View</span>
-                    <span className="sm:hidden">Questions</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('answer_keys')}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                      viewMode === 'answer_keys'
-                        ? 'bg-[#9D174D] text-white shadow-xs'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Answer Keys & Scoring Rubrics</span>
-                    <span className="sm:hidden">Answer Keys</span>
-                  </button>
-                </>
-              )}
-
-              <button
-                onClick={handleGenerateAiResistant}
-                disabled={isGeneratingAiResistant}
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-gradient-to-r from-purple-700 via-pink-700 to-[#9D174D] hover:from-purple-800 hover:to-pink-800 text-white shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-                title={
-                  activeExam.is_rtl
-                    ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر هوش مصنوعی)'
-                    : 'Generate AI-Resistant Questions'
-                }
-              >
-                {isGeneratingAiResistant ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>{activeExam.is_rtl ? 'در حال تحلیل...' : 'Generating Draft...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-pink-200 shrink-0" />
-                    <span className="hidden md:inline">
-                      {activeExam.is_rtl
-                        ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر AI)'
-                        : 'Generate AI-Resistant Questions'}
-                    </span>
-                    <span className="md:hidden">
-                      {activeExam.is_rtl ? 'سوالات تحلیلی (AI)' : 'AI-Resistant Qs'}
-                    </span>
-                  </>
+            {/* c. Actions: Dedicated, Well-Aligned Toolbar Below Metadata */}
+            <div className="px-5 sm:px-6 md:px-7 py-3.5 sm:py-4 bg-stone-50/75 border-t border-stone-200/80">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:items-center gap-2 sm:gap-2.5">
+                {workspaceView === 'editor' && (
+                  <div className="col-span-2 sm:col-auto grid grid-cols-2 sm:inline-flex items-center p-1 bg-stone-200/70 rounded-xl border border-stone-200/80 gap-1">
+                    <button
+                      onClick={() => setViewMode('questions')}
+                      className={`px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all text-center whitespace-nowrap min-h-[40px] sm:min-h-[34px] ${
+                        viewMode === 'questions'
+                          ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <span className="hidden md:inline">Questions View</span>
+                      <span className="md:hidden">Questions</span>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('answer_keys')}
+                      className={`px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all text-center whitespace-nowrap min-h-[40px] sm:min-h-[34px] ${
+                        viewMode === 'answer_keys'
+                          ? 'bg-white text-[#9D174D] font-bold shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <span className="hidden lg:inline">Answer Keys & Scoring Rubrics</span>
+                      <span className="lg:hidden">Answer Keys</span>
+                    </button>
+                  </div>
                 )}
-              </button>
 
-              <button
-                onClick={() => setShowExportModal(true)}
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Export Exam (DOCX / PDF)</span>
-                <span className="sm:hidden">Export</span>
-              </button>
+                <button
+                  onClick={() => setWorkspaceView(workspaceView === 'editor' ? 'preview' : 'editor')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[44px] sm:min-h-[38px] ${
+                    workspaceView === 'preview'
+                      ? 'col-span-1 sm:col-auto bg-[#9D174D] text-white shadow-xs'
+                      : 'col-span-1 sm:col-auto bg-white text-[#9D174D] border border-pink-200 hover:bg-pink-50 shadow-2xs'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden md:inline">{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview & Print'}</span>
+                  <span className="md:hidden">{workspaceView === 'preview' ? 'Editor' : 'Preview'}</span>
+                </button>
+
+                <div className="hidden lg:block lg:flex-1" />
+
+                <button
+                  onClick={handleGenerateAiResistant}
+                  disabled={isGeneratingAiResistant}
+                  className="col-span-1 sm:col-auto px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-gradient-to-r from-[#7E1248] via-[#9D174D] to-[#BE185D] hover:from-[#6B0F3D] hover:to-[#9D174D] text-white shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 whitespace-nowrap min-h-[44px] sm:min-h-[38px]"
+                  title={
+                    activeExam.is_rtl
+                      ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر هوش مصنوعی)'
+                      : 'Generate AI-Resistant Questions'
+                  }
+                >
+                  {isGeneratingAiResistant ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                      <span>{activeExam.is_rtl ? 'در حال تحلیل...' : 'Generating Draft...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-pink-200 shrink-0" />
+                      <span className="hidden md:inline">
+                        {activeExam.is_rtl
+                          ? 'تولید سوالات تحلیلی و مستند (مقاوم در برابر AI)'
+                          : 'Generate AI-Resistant Questions'}
+                      </span>
+                      <span className="md:hidden">
+                        {activeExam.is_rtl ? 'سوالات تحلیلی (AI)' : 'AI-Resistant'}
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="col-span-2 sm:col-auto px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[44px] sm:min-h-[38px]"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" />
+                  <span>Export Exam (DOCX / PDF)</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1523,23 +1607,27 @@ export function ExamWorkspace({
             />
           ) : (
             <>
-              {/* Group Tabs (Group A, Group B, Group C ... Group J) */}
-              <div className="flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto max-w-full">
+              {/* Group Tabs Selector Rail (Group A–J) */}
+              <div className="bg-stone-100/90 p-1.5 rounded-2xl border border-stone-200/80 flex flex-wrap items-center gap-1.5 max-w-full">
             {activeExam.groups.map((g, idx) => {
               const isSelected = activeGroupIndex === idx;
               return (
                 <button
                   key={g.id}
                   onClick={() => setActiveGroupIndex(idx)}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 whitespace-nowrap min-h-[38px] ${
                     isSelected
-                      ? 'bg-stone-900 text-white shadow-xs'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-[#9D174D] text-white shadow-xs'
+                      : 'bg-white/85 text-stone-700 hover:bg-white hover:text-stone-900 border border-stone-200/70'
                   }`}
                 >
-                  <Shuffle className="w-3 h-3 text-pink-400" />
-                  {g.group_name}
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+                  <Shuffle className={`w-3 h-3 shrink-0 ${isSelected ? 'text-pink-200' : 'text-[#9D174D]'}`} />
+                  <span>{g.group_name}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-md tabular-nums leading-none font-semibold ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
                     {g.questions.length} Qs
                   </span>
                 </button>
@@ -1550,11 +1638,13 @@ export function ExamWorkspace({
           {/* QUESTIONS VIEW */}
           {viewMode === 'questions' && currentGroup && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-stone-500 px-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-stone-500 px-1 py-0.5">
                 <span>
-                  Viewing <strong className="text-stone-800">{currentGroup.group_name}</strong> (Distinct grounded exam variant with synchronized answer key)
+                  Viewing <strong className="text-stone-900 font-semibold">{currentGroup.group_name}</strong> (Distinct grounded exam variant with synchronized answer key)
                 </span>
-                <span>Total Marks: {currentGroup.questions.reduce((a, b) => a + b.marks, 0)} pts</span>
+                <span className="font-semibold text-stone-800 tabular-nums shrink-0">
+                  Total Marks: {currentGroup.questions.reduce((a, b) => a + b.marks, 0)} pts
+                </span>
               </div>
 
               {reorderError && (
@@ -1575,26 +1665,30 @@ export function ExamWorkspace({
                 return (
                   <div
                     key={q.id}
-                    className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs space-y-3"
+                    className="p-4 sm:p-6 bg-white rounded-2xl border border-stone-200/90 shadow-xs space-y-3.5 min-w-0"
                   >
                     <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="w-6 h-6 rounded-lg bg-pink-50 text-[#9D174D] font-bold text-xs flex items-center justify-center">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-pink-50 border border-pink-200/70 text-[#9D174D] font-bold text-xs flex items-center justify-center shrink-0 tabular-nums">
                           {q.question_order}
                         </span>
-                        <span className="text-xs uppercase font-mono px-2 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-200">
-                          {q.question_type}
+                        <span className="text-[11px] uppercase font-mono font-semibold px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200/80">
+                          {q.question_type.replace('_', ' ')}
                         </span>
-                        <span className="text-xs capitalize font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="text-xs capitalize font-medium text-emerald-700">
                           {q.difficulty}
                         </span>
                         {q.bloom_level && (
-                          <span className="text-xs capitalize font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                            Bloom: {q.bloom_level}
-                          </span>
+                          <>
+                            <span aria-hidden="true" className="text-stone-300">·</span>
+                            <span className="text-xs capitalize font-medium text-stone-600">
+                              Bloom: {q.bloom_level}
+                            </span>
+                          </>
                         )}
-                        <span className="text-xs font-semibold text-stone-500">
-                          Marks: {q.marks}
+                        <span aria-hidden="true" className="text-stone-300">·</span>
+                        <span className="text-xs font-semibold text-stone-700 tabular-nums">
+                          {q.marks} {q.marks === 1 ? 'mark' : 'marks'}
                         </span>
                       </div>
 
@@ -1607,7 +1701,7 @@ export function ExamWorkspace({
                                 type="button"
                                 onClick={() => handleMoveQuestion(qIndex, 'up')}
                                 disabled={isFirst || Boolean(reorderingQuestionId)}
-                                className="p-1.5 sm:p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[28px] min-h-[28px] flex items-center justify-center"
+                                className="p-1.5 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[32px] min-h-[32px] flex items-center justify-center"
                                 title={isFirst ? 'Already at top' : 'Move Question Up'}
                                 aria-label={`Move question ${q.question_order} up`}
                               >
@@ -1618,7 +1712,7 @@ export function ExamWorkspace({
                                 type="button"
                                 onClick={() => handleMoveQuestion(qIndex, 'down')}
                                 disabled={isLast || Boolean(reorderingQuestionId)}
-                                className="p-1.5 sm:p-1 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[28px] min-h-[28px] flex items-center justify-center"
+                                className="p-1.5 hover:bg-stone-200 disabled:opacity-30 disabled:hover:bg-transparent text-stone-600 transition-colors cursor-pointer disabled:cursor-not-allowed min-w-[32px] min-h-[32px] flex items-center justify-center"
                                 title={isLast ? 'Already at bottom' : 'Move Question Down'}
                                 aria-label={`Move question ${q.question_order} down`}
                               >
@@ -1640,14 +1734,14 @@ export function ExamWorkspace({
                                 }
                               }}
                               disabled={Boolean(regeneratingQuestionId)}
-                              className={`py-1.5 sm:py-1 px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs min-h-[30px] ${
+                              className={`py-1.5 px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[34px] whitespace-nowrap ${
                                 isPromptingRegen
-                                  ? 'bg-pink-100 border-[#9D174D] text-[#9D174D]'
-                                  : 'bg-stone-100 hover:bg-stone-200 border-stone-200 text-stone-700'
+                                  ? 'bg-pink-50 border-[#9D174D] text-[#9D174D]'
+                                  : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700'
                               } disabled:opacity-50`}
                               title="Regenerate this question from source document"
                             >
-                              <RotateCcw className={`w-3.5 h-3.5 ${isRegeneratingThis ? 'animate-spin text-[#9D174D]' : 'text-stone-600'}`} />
+                              <RotateCcw className={`w-3.5 h-3.5 ${isRegeneratingThis ? 'animate-spin text-[#9D174D]' : 'text-stone-500'}`} />
                               <span>{isRegeneratingThis ? 'Regenerating...' : 'Regenerate'}</span>
                             </button>
 
@@ -1655,10 +1749,10 @@ export function ExamWorkspace({
                             <button
                               type="button"
                               onClick={() => handleStartEdit(q)}
-                              className="py-1.5 sm:py-1 px-2.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[30px]"
+                              className="py-1.5 px-2.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[34px] whitespace-nowrap"
                               title="Edit Question, Choices, Answer & Rubric"
                             >
-                              <Edit2 className="w-3.5 h-3.5 text-stone-600" />
+                              <Edit2 className="w-3.5 h-3.5 text-stone-500" />
                               <span>Edit</span>
                             </button>
 
@@ -1669,7 +1763,7 @@ export function ExamWorkspace({
                                 setDeletingQuestion(q);
                                 setDeleteError(null);
                               }}
-                              className="py-1.5 sm:py-1 px-2.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[30px]"
+                              className="py-1.5 px-2.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs min-h-[34px] whitespace-nowrap"
                               title="Delete Question across all groups"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -1683,7 +1777,7 @@ export function ExamWorkspace({
                               type="button"
                               onClick={() => handleSaveEdit(q.id)}
                               disabled={isSavingEdit}
-                              className="px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1 hover:bg-emerald-700 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1 hover:bg-emerald-700 transition-all cursor-pointer shadow-2xs disabled:opacity-50 min-h-[34px]"
                             >
                               <Save className="w-3 h-3" />
                               <span>{isSavingEdit ? 'Saving...' : 'Save'}</span>
@@ -1694,7 +1788,7 @@ export function ExamWorkspace({
                                 setEditingQuestionId(null);
                                 setEditError(null);
                               }}
-                              className="p-1 text-stone-400 hover:text-stone-600 rounded-lg cursor-pointer"
+                              className="p-1.5 text-stone-400 hover:text-stone-600 rounded-lg cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
                               title="Cancel"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -1727,14 +1821,14 @@ export function ExamWorkspace({
                         <p className="text-stone-600 text-[11px] leading-relaxed">
                           Refreshes this question from source document evidence (Page {q.source_page || 1}). You can optionally supply custom focal instructions:
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <input
                             type="text"
                             placeholder="Optional instructions (e.g. Focus on mitochondrial ATP synthesis)"
                             value={regenerateInstructions}
                             onChange={(e) => setRegenerateInstructions(e.target.value)}
                             disabled={isRegeneratingThis}
-                            className="flex-1 px-3 py-1.5 text-xs bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#9D174D] disabled:bg-stone-50"
+                            className="flex-1 min-w-0 px-3 py-2 text-xs bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#9D174D] disabled:bg-stone-50 min-h-[38px]"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 handleRegenerateQuestion(q.id);
@@ -1745,7 +1839,7 @@ export function ExamWorkspace({
                             type="button"
                             onClick={() => handleRegenerateQuestion(q.id)}
                             disabled={isRegeneratingThis}
-                            className="px-3 py-1.5 bg-[#9D174D] hover:bg-[#83133E] text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                            className="px-3.5 py-2 bg-[#9D174D] hover:bg-[#83133E] text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50 min-h-[38px]"
                           >
                             <RotateCcw className={`w-3 h-3 ${isRegeneratingThis ? 'animate-spin' : ''}`} />
                             <span>{isRegeneratingThis ? 'Regenerating...' : 'Confirm'}</span>
@@ -1798,7 +1892,7 @@ export function ExamWorkspace({
                         {/* MCQ Options Editing (Supports all 4-5 options, correct answer selection, and reordering) */}
                         {editOptions && editOptions.length > 0 && (
                           <div className="space-y-2 pt-2 border-t border-stone-100">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                               <label className="text-xs font-bold text-stone-700">
                                 Answer Choices ({editOptions.length} Options):
                               </label>
@@ -1816,7 +1910,7 @@ export function ExamWorkspace({
                                 return (
                                   <div
                                     key={i}
-                                    className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all ${
+                                    className={`p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-all min-w-0 ${
                                       isChecked
                                         ? 'border-emerald-400 bg-emerald-50/70 shadow-2xs'
                                         : 'border-stone-200 bg-stone-50/50'
@@ -1858,7 +1952,7 @@ export function ExamWorkspace({
                                           setEditCorrectAnswer(newVal);
                                         }
                                       }}
-                                      className="flex-1 px-3 py-1.5 border border-stone-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                      className="flex-1 min-w-0 px-2.5 sm:px-3 py-2 sm:py-1.5 border border-stone-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
                                       placeholder={`Choice ${label}`}
                                     />
 
@@ -1944,7 +2038,7 @@ export function ExamWorkspace({
                       </div>
                     ) : (
                       <p
-                        className={`text-xs font-medium text-stone-900 leading-relaxed ${
+                        className={`text-sm sm:text-[15px] font-semibold text-stone-900 leading-relaxed ${
                           activeExam.is_rtl ? 'text-right' : 'text-left'
                         }`}
                         dir={activeExam.is_rtl ? 'rtl' : 'ltr'}
@@ -1955,23 +2049,29 @@ export function ExamWorkspace({
 
                     {/* Multiple Choice Options Display (in view mode) */}
                     {!isEditing && q.options && q.options.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-0.5">
                         {q.options.map((opt, i) => {
                           const letters = ['A', 'B', 'C', 'D', 'E'];
                           const isCorrect = q.correct_answer.includes(opt) || q.correct_answer.startsWith(letters[i]);
                           return (
                             <div
                               key={i}
-                              className={`p-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                              className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
                                 isCorrect
                                   ? 'border-emerald-300 bg-emerald-50/60 font-semibold text-emerald-900'
                                   : 'border-stone-200 bg-stone-50/40 text-stone-700'
                               }`}
                             >
-                              <span className="w-5 h-5 rounded-md bg-white border border-stone-200 text-stone-500 text-[10px] font-bold flex items-center justify-center shrink-0">
+                              <span
+                                className={`w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0 border ${
+                                  isCorrect
+                                    ? 'bg-emerald-600 text-white border-emerald-600'
+                                    : 'bg-white border-stone-200 text-stone-500'
+                                }`}
+                              >
                                 {letters[i]}
                               </span>
-                              <span>{opt}</span>
+                              <span className="leading-relaxed break-words">{opt}</span>
                             </div>
                           );
                         })}
@@ -1980,32 +2080,37 @@ export function ExamWorkspace({
 
                     {/* Correct Answer & Pedagogical Explanation Display (in view mode) */}
                     {!isEditing && (
-                      <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/60 text-xs space-y-1">
-                        <div className="flex items-center gap-2">
+                      <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/70 text-xs space-y-1.5">
+                        <div className="flex flex-wrap items-baseline gap-1.5">
                           <span className="font-bold text-emerald-800">Correct Answer:</span>
-                          <span className="text-stone-800 font-medium">{q.correct_answer}</span>
+                          <span className="text-stone-900 font-semibold break-words">{q.correct_answer}</span>
                         </div>
                         {q.explanation && (
-                          <p className="text-[11px] text-stone-500 leading-relaxed">
-                            <strong className="text-stone-600">Rationale / Rubric:</strong> {q.explanation}
+                          <p className="text-[11px] text-stone-600 leading-relaxed">
+                            <strong className="text-stone-700">Rationale / Rubric:</strong> {q.explanation}
                           </p>
                         )}
                       </div>
                     )}
 
                     {/* Strict Source Grounding Citation */}
-                    <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
-                      <span className="font-semibold text-stone-700 flex items-center gap-1">
-                        <BookOpen className="w-3 h-3 text-[#9D174D]" />
-                        Source Reference:
+                    <div className="pt-3 border-t border-stone-100 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-stone-500">
+                      <span className="font-semibold text-stone-700 inline-flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-[#9D174D] shrink-0" />
+                        <span>Source Reference:</span>
                       </span>
-                      <span className="bg-stone-100 px-2 py-0.5 rounded font-mono text-[10px]">
+                      <span className="font-mono text-[10px] text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md">
                         {q.source_document_name}
                       </span>
-                      <span>Page {q.source_page}</span>
-                      {q.source_chapter && <span>• {q.source_chapter}</span>}
+                      <span className="tabular-nums">Page {q.source_page}</span>
+                      {q.source_chapter && (
+                        <>
+                          <span aria-hidden="true" className="text-stone-300">·</span>
+                          <span>{q.source_chapter}</span>
+                        </>
+                      )}
                       {q.source_evidence && (
-                        <span className="italic text-stone-400 block w-full mt-1">
+                        <span className="italic text-stone-500 block w-full mt-1 leading-relaxed bg-stone-50/60 px-3 py-2 rounded-lg">
                           "{q.source_evidence}"
                         </span>
                       )}
@@ -2023,43 +2128,43 @@ export function ExamWorkspace({
                 Official Answer Keys & Scoring Rubrics for All Groups
               </h4>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {answerKeys.map((keyGroup) => (
                   <div
                     key={keyGroup.id}
-                    className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs space-y-3"
+                    className="p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/90 shadow-xs space-y-3 min-w-0"
                   >
-                    <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                      <h5 className="font-bold text-xs text-[#9D174D] flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5" />
-                        {keyGroup.group_name} Answer Key
+                    <div className="flex items-center justify-between border-b border-stone-100 pb-2 gap-2">
+                      <h5 className="font-bold text-xs text-[#9D174D] flex items-center gap-1.5 min-w-0 truncate">
+                        <Award className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{keyGroup.group_name} Answer Key</span>
                       </h5>
-                      <span className="text-[10px] text-stone-400">
+                      <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
                         {keyGroup.items.length} Questions
                       </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {keyGroup.items.map((item) => (
                         <div
                           key={item.question_number}
-                          className="p-2.5 rounded-lg border border-stone-100 bg-stone-50/50 text-xs space-y-1"
+                          className="p-2.5 rounded-lg border border-stone-100 bg-stone-50/50 text-xs space-y-1 min-w-0"
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2 tabular-nums">
                             <span className="font-bold text-stone-900">
                               Q{item.question_number} ({item.question_type})
                             </span>
-                            <span className="text-emerald-700 font-bold">
+                            <span className="text-emerald-700 font-bold shrink-0">
                               {item.marks} pts
                             </span>
                           </div>
-                          <div className="text-emerald-800 font-semibold">
+                          <div className="text-emerald-800 font-semibold break-words">
                             Answer: {item.correct_answer}
                           </div>
                           {item.explanation && (
-                            <p className="text-[10px] text-stone-500">{item.explanation}</p>
+                            <p className="text-[11px] text-stone-500 break-words leading-relaxed">{item.explanation}</p>
                           )}
-                          <div className="text-[10px] text-stone-400">
+                          <div className="text-[10px] text-stone-400 break-words">
                             Ref: {item.source_reference} (P. {item.source_page})
                           </div>
                         </div>
@@ -2077,16 +2182,17 @@ export function ExamWorkspace({
 
       {/* Export Engine Modal */}
       {showExportModal && activeExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-lg w-full p-4 sm:p-6 space-y-5 animate-in fade-in duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
-                <FileDown className="w-5 h-5 text-emerald-600" />
+                <FileDown className="w-5 h-5 text-emerald-600 shrink-0" />
                 <h3 className="text-base font-bold text-stone-900">Export Examination Package</h3>
               </div>
               <button
                 onClick={() => setShowExportModal(false)}
-                className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600"
+                aria-label="Close export modal"
+                className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2096,10 +2202,10 @@ export function ExamWorkspace({
               {/* Target Scope */}
               <div className="space-y-1.5">
                 <label className="font-bold text-stone-700 block">Groups Selection</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     onClick={() => setExportScope('current')}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all min-h-[44px] ${
                       exportScope === 'current'
                         ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                         : 'border-stone-200 hover:bg-stone-50 text-stone-600'
@@ -2110,7 +2216,7 @@ export function ExamWorkspace({
                   </button>
                   <button
                     onClick={() => setExportScope('all')}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all min-h-[44px] ${
                       exportScope === 'all'
                         ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                         : 'border-stone-200 hover:bg-stone-50 text-stone-600'
@@ -2125,10 +2231,10 @@ export function ExamWorkspace({
               {/* Document Components */}
               <div className="space-y-1.5">
                 <label className="font-bold text-stone-700 block">Document Components</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     onClick={() => setExportTarget('both')}
-                    className={`p-2 rounded-xl border text-center cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-xl border text-center cursor-pointer transition-all min-h-[42px] ${
                       exportTarget === 'both'
                         ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                         : 'border-stone-200 hover:bg-stone-50 text-stone-600'
@@ -2138,7 +2244,7 @@ export function ExamWorkspace({
                   </button>
                   <button
                     onClick={() => setExportTarget('exam')}
-                    className={`p-2 rounded-xl border text-center cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-xl border text-center cursor-pointer transition-all min-h-[42px] ${
                       exportTarget === 'exam'
                         ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                         : 'border-stone-200 hover:bg-stone-50 text-stone-600'
@@ -2148,7 +2254,7 @@ export function ExamWorkspace({
                   </button>
                   <button
                     onClick={() => setExportTarget('answer_key')}
-                    className={`p-2 rounded-xl border text-center cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-xl border text-center cursor-pointer transition-all min-h-[42px] ${
                       exportTarget === 'answer_key'
                         ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                         : 'border-stone-200 hover:bg-stone-50 text-stone-600'
@@ -2160,38 +2266,38 @@ export function ExamWorkspace({
               </div>
 
               {/* Provenance flag */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-start gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="includeProv"
                   checked={includeProvenance}
                   onChange={(e) => setIncludeProvenance(e.target.checked)}
-                  className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                  className="mt-0.5 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                 />
-                <label htmlFor="includeProv" className="text-stone-700 cursor-pointer">
+                <label htmlFor="includeProv" className="text-stone-700 cursor-pointer leading-relaxed">
                   Include source evidence citations & page references in Answer Key
                 </label>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-stone-100">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
               <button
                 onClick={() => setShowExportModal(false)}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer text-center"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer text-center min-h-[42px] sm:min-h-[38px]"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleExport('docx')}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px]"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Download DOCX (.docx)</span>
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 min-h-[42px] sm:min-h-[38px]"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download PDF (.pdf)</span>
@@ -2203,13 +2309,13 @@ export function ExamWorkspace({
 
       {/* Delete Question Confirmation Dialog */}
       {deletingQuestion && activeExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 no-print">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-3 sm:p-4 no-print">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-md w-full p-4 sm:p-6 space-y-4 animate-in fade-in duration-150">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
               </div>
-              <div className="space-y-1 flex-1">
+              <div className="space-y-1 flex-1 min-w-0">
                 <h3 className="text-sm font-bold text-stone-900">
                   Delete Question {deletingQuestion.question_order}?
                 </h3>
@@ -2223,7 +2329,7 @@ export function ExamWorkspace({
             <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 text-xs space-y-1">
               <span className="text-[10px] uppercase font-bold text-stone-400">Question Content:</span>
               <p className="text-stone-800 line-clamp-3 font-medium">"{deletingQuestion.question_text}"</p>
-              <div className="flex items-center gap-2 pt-1 text-[11px] text-stone-500">
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-stone-500 tabular-nums">
                 <span>Marks: {deletingQuestion.marks} pt</span>
                 <span>•</span>
                 <span>Type: {deletingQuestion.question_type.toUpperCase()}</span>
@@ -2238,7 +2344,7 @@ export function ExamWorkspace({
             )}
 
             {/* Dialog Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-stone-100">
               <button
                 type="button"
                 onClick={() => {
@@ -2246,7 +2352,7 @@ export function ExamWorkspace({
                   setDeleteError(null);
                 }}
                 disabled={isDeletingQuestion}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 sm:py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer disabled:opacity-50 text-center min-h-[42px] sm:min-h-[36px]"
               >
                 Cancel
               </button>
@@ -2254,7 +2360,7 @@ export function ExamWorkspace({
                 type="button"
                 onClick={handleDeleteQuestion}
                 disabled={isDeletingQuestion}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50"
+                className="px-4 py-2.5 sm:py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 min-h-[42px] sm:min-h-[36px]"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeletingQuestion ? 'Deleting...' : 'Confirm Delete'}</span>
