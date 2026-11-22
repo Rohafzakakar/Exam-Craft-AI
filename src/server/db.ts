@@ -1,14 +1,110 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-// Database Directory & Path Setup (supports persistent volume mount override via EXAMCRAFT_DATA_DIR)
-const DATA_DIR = process.env.EXAMCRAFT_DATA_DIR
-  ? path.resolve(process.env.EXAMCRAFT_DATA_DIR)
-  : path.resolve(process.cwd(), 'data');
-const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
-const DB_PATH = path.resolve(DATA_DIR, 'examcraft.db');
+export interface DataStorageInfo {
+  configuredDataDir: string | null;
+  dataDir: string;
+  backupsDir: string;
+  uploadsDir: string;
+  dbPath: string;
+  usingFallback: boolean;
+  fallbackReason: string | null;
+}
+
+function tryPrepareWritableDir(dirPath: string): {
+  ok: boolean;
+  backupsDir: string;
+  uploadsDir: string;
+  dbPath: string;
+  error?: string;
+} {
+  const resolved = path.resolve(dirPath);
+  const backupsDir = path.resolve(resolved, 'backups');
+  const uploadsDir = path.resolve(resolved, 'uploads');
+  const dbPath = path.resolve(resolved, 'examcraft.db');
+  const probeFile = path.resolve(resolved, `.examcraft-write-probe-${process.pid}-${Date.now()}`);
+
+  try {
+    if (!fs.existsSync(resolved)) {
+      fs.mkdirSync(resolved, { recursive: true });
+    }
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    fs.accessSync(resolved, fs.constants.R_OK | fs.constants.W_OK);
+    fs.accessSync(backupsDir, fs.constants.R_OK | fs.constants.W_OK);
+    fs.accessSync(uploadsDir, fs.constants.R_OK | fs.constants.W_OK);
+
+    // Real write/unlink probe catches read-only mounts and UID/GID permission mismatches
+    fs.writeFileSync(probeFile, 'ok', 'utf8');
+    fs.unlinkSync(probeFile);
+
+    return { ok: true, backupsDir, uploadsDir, dbPath };
+  } catch (err: any) {
+    try {
+      if (fs.existsSync(probeFile)) fs.unlinkSync(probeFile);
+    } catch {
+      // ignore probe cleanup error
+    }
+    const code = err?.code ? `${err.code}: ` : '';
+    return {
+      ok: false,
+      backupsDir,
+      uploadsDir,
+      dbPath,
+      error: `${code}${err?.message || 'Permission denied'}`,
+    };
+  }
+}
+
+function resolveWritableDataStorage(): DataStorageInfo {
+  const configuredRaw = process.env.EXAMCRAFT_DATA_DIR?.trim();
+  const configuredDataDir = configuredRaw ? path.resolve(configuredRaw) : null;
+  const localAppDataDir = path.resolve(process.cwd(), 'data');
+  const tmpDataDir = path.resolve(os.tmpdir(), 'examcraft-data');
+
+  const candidates: string[] = [];
+  for (const candidate of [configuredDataDir, localAppDataDir, tmpDataDir]) {
+    if (candidate && !candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  }
+
+  const errors: string[] = [];
+  for (let idx = 0; idx < candidates.length; idx++) {
+    const candidate = candidates[idx];
+    const check = tryPrepareWritableDir(candidate);
+    if (check.ok) {
+      const usingFallback = Boolean(configuredDataDir && candidate !== configuredDataDir);
+      const fallbackReason = usingFallback ? errors[0] || 'Configured directory not writable' : null;
+      if (usingFallback) {
+        console.warn(
+          `[DatabaseService] WARNING: Configured EXAMCRAFT_DATA_DIR ("${configuredDataDir}") is not writable (${fallbackReason}). Falling back to "${candidate}". Data stored in this fallback directory will NOT persist across container restarts unless a writable persistent volume is mounted for the runtime user.`
+        );
+      }
+      return {
+        configuredDataDir,
+        dataDir: candidate,
+        backupsDir: check.backupsDir,
+        uploadsDir: check.uploadsDir,
+        dbPath: check.dbPath,
+        usingFallback,
+        fallbackReason,
+      };
+    }
+    errors.push(`${candidate} -> ${check.error}`);
+  }
+
+  throw new Error(
+    `[DatabaseService] CRITICAL: No writable data directory found. Attempted: ${errors.join('; ')}`
+  );
+}
 
 export interface UserRecord {
   id: string;
@@ -115,11 +211,12 @@ export interface ExamRecord {
 
 class ExamCraftDatabase {
   private db!: DatabaseSync;
+  private storageInfo!: DataStorageInfo;
 
   constructor() {
     this.initDirectories();
     this.initDatabase();
-    if (fs.existsSync(DB_PATH)) {
+    if (fs.existsSync(this.storageInfo.dbPath)) {
       this.createRollingBackup();
     }
     this.runMigrations();
@@ -128,13 +225,12 @@ class ExamCraftDatabase {
     this.ensureInitialBackupAfterSeeding();
   }
 
+  public getStorageInfo(): DataStorageInfo {
+    return { ...this.storageInfo };
+  }
+
   private initDirectories(): void {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(BACKUPS_DIR)) {
-      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
-    }
+    this.storageInfo = resolveWritableDataStorage();
   }
 
   /**
@@ -158,13 +254,14 @@ class ExamCraftDatabase {
   }
 
   public createRollingBackup(): string | null {
-    if (!this.db || !fs.existsSync(DB_PATH)) return null;
+    if (!this.db || !fs.existsSync(this.storageInfo.dbPath)) return null;
+    const backupsDir = this.storageInfo.backupsDir;
     try {
-      if (!fs.existsSync(BACKUPS_DIR)) {
-        fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+      if (!fs.existsSync(backupsDir)) {
+        fs.mkdirSync(backupsDir, { recursive: true });
       }
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupFile = path.resolve(BACKUPS_DIR, `examcraft_backup_${timestamp}.db`);
+      const backupFile = path.resolve(backupsDir, `examcraft_backup_${timestamp}.db`);
 
       // Flush WAL frames prior to backup creation
       this.checkpoint('PASSIVE');
@@ -179,19 +276,19 @@ class ExamCraftDatabase {
       } catch (vacErr: any) {
         console.warn('[DatabaseService] VACUUM INTO fallback to checkpoint + copy:', vacErr?.message);
         this.checkpoint('TRUNCATE');
-        fs.copyFileSync(DB_PATH, backupFile);
+        fs.copyFileSync(this.storageInfo.dbPath, backupFile);
       }
 
       // Keep only the last 5 backups
       const existingBackups = fs
-        .readdirSync(BACKUPS_DIR)
+        .readdirSync(backupsDir)
         .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'))
         .sort();
       if (existingBackups.length > 5) {
         const toDelete = existingBackups.slice(0, existingBackups.length - 5);
         for (const file of toDelete) {
           try {
-            fs.unlinkSync(path.resolve(BACKUPS_DIR, file));
+            fs.unlinkSync(path.resolve(backupsDir, file));
           } catch {
             // Ignore unlink errors
           }
@@ -205,25 +302,38 @@ class ExamCraftDatabase {
   }
 
   private ensureInitialBackupAfterSeeding(): void {
-    if (!fs.existsSync(BACKUPS_DIR)) {
-      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
-    }
-    const existingBackups = fs
-      .readdirSync(BACKUPS_DIR)
-      .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'));
-    if (existingBackups.length === 0 && fs.existsSync(DB_PATH)) {
-      this.createRollingBackup();
+    const backupsDir = this.storageInfo.backupsDir;
+    try {
+      if (!fs.existsSync(backupsDir)) {
+        fs.mkdirSync(backupsDir, { recursive: true });
+      }
+      const existingBackups = fs
+        .readdirSync(backupsDir)
+        .filter((f) => f.startsWith('examcraft_backup_') && f.endsWith('.db'));
+      if (existingBackups.length === 0 && fs.existsSync(this.storageInfo.dbPath)) {
+        this.createRollingBackup();
+      }
+    } catch (err: any) {
+      console.warn('[DatabaseService] Initial backup skipped:', err?.message);
     }
   }
 
   private initDatabase(): void {
-    this.db = new DatabaseSync(DB_PATH);
-    // Enable WAL mode for high concurrency and write safety
-    this.db.exec('PRAGMA journal_mode = WAL;');
+    this.db = new DatabaseSync(this.storageInfo.dbPath);
+    // Enable WAL mode for high concurrency and write safety; fall back cleanly if volume mount disallows WAL
+    try {
+      this.db.exec('PRAGMA journal_mode = WAL;');
+      this.db.exec('PRAGMA wal_autocheckpoint = 100;');
+    } catch (walErr: any) {
+      console.warn('[DatabaseService] WAL journal mode unavailable on this volume, using DELETE mode:', walErr?.message);
+      try {
+        this.db.exec('PRAGMA journal_mode = DELETE;');
+      } catch {
+        // ignore
+      }
+    }
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.db.exec('PRAGMA synchronous = NORMAL;');
-    // Set auto-checkpoint threshold to 100 pages (~400KB)
-    this.db.exec('PRAGMA wal_autocheckpoint = 100;');
   }
 
   public close(): void {

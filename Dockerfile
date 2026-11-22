@@ -31,7 +31,7 @@ COPY src/server ./src/server
 COPY fonts ./fonts
 
 # Prepare writable persistent data directory before declaring volume
-RUN mkdir -p /app/data/backups && chown -R node:node /app
+RUN mkdir -p /app/data/backups /app/data/uploads && chown -R node:node /app
 
 USER node
 

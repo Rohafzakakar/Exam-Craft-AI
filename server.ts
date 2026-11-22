@@ -4498,12 +4498,18 @@ async function startServer() {
 
   // 1. HEALTH
   app.get('/api/health', (req: Request, res: Response) => {
+    const storageInfo = db.getStorageInfo();
     res.json({
       status: 'healthy',
       app_name: 'Remix ExamCraft AI',
       version: '1.0.0',
       environment: process.env.NODE_ENV || 'development',
       database: 'ok',
+      storage: {
+        data_dir: storageInfo.dataDir,
+        using_fallback: storageInfo.usingFallback,
+        persistent_volume_configured: Boolean(storageInfo.configuredDataDir && !storageInfo.usingFallback),
+      },
       vector_store: {
         type: 'in-memory-rag',
         status: 'active',
@@ -7421,7 +7427,8 @@ async function startServer() {
   }
 
   const server = httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`ExamCraft AI Server listening on http://0.0.0.0:${PORT}`);
+    const storage = db.getStorageInfo();
+    console.log(`ExamCraft AI Server listening on http://0.0.0.0:${PORT} (data_dir=${storage.dataDir})`);
   });
 
   let isShuttingDown = false;
