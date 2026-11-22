@@ -932,17 +932,16 @@ class ExamCraftDatabase {
     let rows: any[];
     if (userId) {
       stmt = this.db.prepare(
-        "SELECT * FROM documents WHERE user_id = ? OR (user_id IS NULL AND session_id = 'default') ORDER BY created_at DESC"
+        'SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC'
       );
       rows = stmt.all(userId) as any[];
-    } else if (sessionId) {
+    } else if (sessionId && sessionId !== 'default') {
       stmt = this.db.prepare(
-        "SELECT * FROM documents WHERE user_id IS NULL AND (session_id = ? OR session_id = 'default') ORDER BY created_at DESC"
+        'SELECT * FROM documents WHERE user_id IS NULL AND session_id = ? ORDER BY created_at DESC'
       );
       rows = stmt.all(sessionId) as any[];
     } else {
-      stmt = this.db.prepare("SELECT * FROM documents WHERE user_id IS NULL AND session_id = 'default' ORDER BY created_at DESC");
-      rows = stmt.all() as any[];
+      rows = [];
     }
 
     const chunkStmt = this.db.prepare(

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Printer,
   FileText,
   Download,
   ArrowLeft,
@@ -44,17 +43,6 @@ export function AcademicPaperPreview({
       ? exam.groups
       : [exam.groups[activeGroupIndex] || exam.groups[0]].filter(Boolean);
 
-  const handlePrint = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        window.focus();
-        window.print();
-      }
-    } catch (err) {
-      console.error('Print dialog invocation error:', err);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* PREVIEW TOOLBAR (Hidden during print) */}
@@ -77,7 +65,7 @@ export function AcademicPaperPreview({
               <span className="truncate">Academic Sheet Preview</span>
             </h3>
             <p className="text-[11px] text-stone-500 truncate hidden sm:block">
-              Print preview of student papers & confidential answer keys
+              Formatted preview of student papers & confidential answer keys
             </p>
           </div>
         </div>
@@ -146,19 +134,8 @@ export function AcademicPaperPreview({
 
           <div className="h-5 w-px bg-stone-200 hidden sm:block" />
 
-          {/* Print & Export Buttons */}
+          {/* Export Buttons */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              data-testid="print-sheet-btn"
-              onClick={handlePrint}
-              className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs min-h-[38px] sm:min-h-[36px]"
-              title="Print Examination Sheets & Answer Keys"
-              aria-label="Print Sheet"
-            >
-              <Printer className="w-3.5 h-3.5 text-stone-600" />
-              <span>Print</span>
-            </button>
             <button
               onClick={() => onExport('docx', viewTarget, scope === 'all')}
               className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer shadow-xs min-h-[38px] sm:min-h-[36px]"

@@ -4906,7 +4906,14 @@ async function startServer() {
         });
       }
 
-      const sessionIdentifier = req.auth.userId ? null : (req.auth.sessionId || (req.body.session_id as string) || 'default');
+      const rawBodySessionId = typeof req.body?.session_id === 'string' ? req.body.session_id.trim() : '';
+      const sessionIdentifier = req.auth.userId
+        ? null
+        : req.auth.sessionId && req.auth.sessionId !== 'default'
+          ? req.auth.sessionId
+          : rawBodySessionId && rawBodySessionId !== 'default'
+            ? rawBodySessionId
+            : 'default';
 
       const newDoc: DocumentRecord = {
         id: docId,
@@ -5131,6 +5138,16 @@ async function startServer() {
       const doc = db.getDocumentById(document_id);
       if (!doc) {
         return res.status(404).json({ detail: 'Target document not found.' });
+      }
+
+      if (doc.id !== 'doc-cell-biology-101' && doc.session_id !== 'default') {
+        if (doc.user_id) {
+          if (doc.user_id !== req.auth.userId) {
+            return res.status(403).json({ detail: 'Permission denied. Private teacher document.' });
+          }
+        } else if (!req.auth.sessionId || doc.session_id !== req.auth.sessionId) {
+          return res.status(403).json({ detail: 'Permission denied.' });
+        }
       }
 
       // Filter chunks strictly by selected_pages if provided

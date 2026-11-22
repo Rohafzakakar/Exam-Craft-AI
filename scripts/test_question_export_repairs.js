@@ -1,5 +1,7 @@
 import assert from 'node:assert';
+import fs from 'node:fs';
 import http from 'node:http';
+import path from 'node:path';
 
 const PORT = process.env.PORT || 3000;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -182,6 +184,20 @@ async function runSuite() {
       otherToken = reg2.body.token;
     });
 
+    await test('Document isolation: new teachers, guest sessions, and default requests do NOT receive Cell_Biology_101.pdf', async () => {
+      const tDocs = await request('GET', '/api/documents', { token: teacherToken });
+      assert.strictEqual(tDocs.statusCode, 200);
+      assert.deepStrictEqual(tDocs.body, [], 'New registered teacher must start with 0 documents');
+
+      const gDocs = await request('GET', '/api/documents', { sessionId: guestSessionId });
+      assert.strictEqual(gDocs.statusCode, 200);
+      assert.deepStrictEqual(gDocs.body, [], 'New guest session must start with 0 documents');
+
+      const defaultDocs = await request('GET', '/api/documents');
+      assert.strictEqual(defaultDocs.statusCode, 200);
+      assert.deepStrictEqual(defaultDocs.body, [], 'Unauthenticated request without session must return 0 documents');
+    });
+
     // 2. Upload ground-truth document & generate 2-group exam across all 5 question types
     let groupAId = '';
     let groupBId = '';
@@ -195,6 +211,30 @@ async function runSuite() {
       assert.strictEqual(uploadRes.statusCode, 201, `Upload failed: ${uploadRes.statusCode} ${uploadRes.raw}`);
       teacherDocId = uploadRes.body.id;
       createdDocIds.push({ id: teacherDocId, token: teacherToken });
+
+      // Confirm Teacher A sees ONLY their uploaded document (no sample seed doc), and Teacher B still sees 0
+      const listTeacherA = await request('GET', '/api/documents', { token: teacherToken });
+      assert.strictEqual(listTeacherA.statusCode, 200);
+      assert.strictEqual(listTeacherA.body.length, 1);
+      assert.strictEqual(listTeacherA.body[0].id, teacherDocId);
+
+      const listTeacherB = await request('GET', '/api/documents', { token: otherToken });
+      assert.strictEqual(listTeacherB.statusCode, 200);
+      assert.deepStrictEqual(listTeacherB.body, []);
+
+      // Confirm Teacher B cannot generate an exam using Teacher A's private document
+      const crossGen = await request('POST', '/api/exams/generate', {
+        token: otherToken,
+        body: {
+          document_id: teacherDocId,
+          selected_pages: [1],
+          title: 'Unauthorized Gen',
+          subject: 'Bio',
+          groups_count: 1,
+          question_types_config: { mcq: 1 },
+        },
+      });
+      assert.strictEqual(crossGen.statusCode, 403);
 
       const genRes = await request('POST', '/api/exams/generate', {
         token: teacherToken,
@@ -557,6 +597,18 @@ async function runSuite() {
       assert.strictEqual(unknownApiPut.statusCode, 404);
       assert.ok((unknownApiPut.headers['content-type'] || '').includes('application/json'));
       assert.ok(unknownApiPut.body?.detail);
+    });
+
+    await test('UI cleanup: Print Sheet entry points removed and document empty state rendered', async () => {
+      const previewSrc = fs.readFileSync(path.resolve('src/components/AcademicPaperPreview.tsx'), 'utf8');
+      assert.ok(!previewSrc.includes('print-sheet-btn'), 'Print Sheet button must be removed');
+      assert.ok(!previewSrc.includes('Print Sheet'), 'Print Sheet label must be removed');
+      assert.ok(!previewSrc.includes('window.print'), 'window.print must be removed');
+      assert.ok(previewSrc.includes('DOCX') && previewSrc.includes('PDF'), 'DOCX & PDF exports must remain');
+
+      const workspaceSrc = fs.readFileSync(path.resolve('src/components/ExamWorkspace.tsx'), 'utf8');
+      assert.ok(!workspaceSrc.includes('Paper Preview & Print'), 'Preview toggle must not mention Print');
+      assert.ok(workspaceSrc.includes('No Source Documents Yet'), 'Clean empty state must be present');
     });
   } finally {
     // Clean up temporary exams & documents via API

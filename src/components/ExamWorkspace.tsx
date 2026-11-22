@@ -460,11 +460,16 @@ export function ExamWorkspace({
     try {
       const res = await authFetch('/api/documents');
       if (res.ok) {
-        const data = await res.json();
+        const data: DocumentInfo[] = await res.json();
         setDocuments(data);
-        if (data.length > 0 && !selectedDoc) {
-          setSelectedDoc(data[0]);
-        }
+        setSelectedDoc((prev) => {
+          if (data.length === 0) return null;
+          if (prev) {
+            const existing = data.find((d) => d.id === prev.id);
+            if (existing) return existing;
+          }
+          return data[0];
+        });
       }
     } catch (e) {
       console.error('Failed to load documents:', e);
@@ -1140,8 +1145,31 @@ export function ExamWorkspace({
             )}
           </div>
 
-          {/* List of Loaded Documents */}
-          {documents.length > 0 && (
+          {/* List of Loaded Documents or Empty State */}
+          {documents.length === 0 ? (
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200/90 shadow-xs text-center space-y-3">
+              <div className="w-11 h-11 rounded-2xl bg-pink-50 border border-pink-100 text-[#9D174D] flex items-center justify-center mx-auto">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-stone-900">
+                  No Source Documents Yet
+                </h4>
+                <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+                  You have not uploaded any curriculum or textbook files yet. Upload a PDF or DOCX document above to start generating source-grounded examination questions.
+                </p>
+              </div>
+              <div className="pt-1">
+                <label
+                  htmlFor="doc-upload-input"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9D174D] hover:bg-[#83133E] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-all min-h-[40px]"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload PDF or DOCX</span>
+                </label>
+              </div>
+            </div>
+          ) : (
             <div className="bg-white p-5 sm:p-7 rounded-2xl border border-stone-200/90 shadow-xs space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider tabular-nums">
@@ -1157,11 +1185,8 @@ export function ExamWorkspace({
                       onClick={() => {
                         setSelectedDoc(doc);
                         const cleanDocTitle = doc.filename.replace(/\.[^/.]+$/, '');
-                        if (doc.id === 'doc-cell-biology-101') {
-                          setTitle('Cell Biology Midterm Examination');
-                          setSubject('Molecular & Cellular Biology');
-                        } else if (doc.is_rtl || doc.detected_language === 'fa') {
-                          setTitle(`آزمون ${cleanDocTitle}`);
+                        if (doc.is_rtl || doc.detected_language === 'fa' || doc.detected_language === 'ps') {
+                          setTitle(doc.detected_language === 'ps' ? `د ${cleanDocTitle} ازموینه` : `آزمون ${cleanDocTitle}`);
                           setSubject(cleanDocTitle.includes('دموکراسی') ? 'علوم سیاسی و مبانی مردم‌سالاری' : 'محتوای آموزشی و تخصصی');
                         } else {
                           setTitle(`${cleanDocTitle} Examination`);
@@ -1619,7 +1644,7 @@ export function ExamWorkspace({
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden md:inline">{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview & Print'}</span>
+                  <span className="hidden md:inline">{workspaceView === 'preview' ? 'Return to Editor' : 'Paper Preview'}</span>
                   <span className="md:hidden">{workspaceView === 'preview' ? 'Editor' : 'Preview'}</span>
                 </button>
 
